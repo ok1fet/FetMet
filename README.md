@@ -34,4 +34,14 @@
 <img src="Obrazky/20250615_195441.jpg" width="600" height="800" alt="schema" /></p>
 <p>pilse</p>
 
+<table>
+  <tr>
+    <td><img src="obrazky/20250615_195441.jpg" width="150"/></td>
+    <td>
+      <h3>Popisek</h3>
+      <p>Text k obrázku.</p>
+    </td>
+  </tr>
+</table>****
+
 
