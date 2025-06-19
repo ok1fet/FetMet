@@ -31,7 +31,7 @@
 <img src="Obrazky/20250613_223206.jpg" width="600" height="800" alt="schema" /></p>
 <p>vin</p>
 
-<img src="Obrazky/20250615_195441.jpg" width="800" height="600" alt="schema" /></p>
+<img src="Obrazky/20250615_195441.jpg" width="600" height="800" alt="schema" /></p>
 <p>pilse</p>
 
 
