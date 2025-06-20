@@ -17,7 +17,7 @@
 <img src="Obrazky/20250604_133616.jpg" width="800" height="600" alt="schema" /></p>
 <p>pcb</p>
 <img src="Obrazky/20250620_184324.jpg" width="600" height="800" alt="schema" /></p>
-<img src="Obrazky/20250620_184329.jpg" width="600" height="800" alt="schema" /></p>
+<img src="Obrazky/20250620_184329.jpg" width="800" height="600" alt="schema" /></p>
 
 <img src="Obrazky/20240724_181448.jpg" width="600" height="800" alt="schema" /></p>
 <p>Jant</p>
