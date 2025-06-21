@@ -42,6 +42,9 @@ Srážky se detekují nepřetržitě. Každých 5 sekund se zaznamenávají do *
 
 Senzory pro vítr a srážky jsou použity z meteostanic **WH1080 / WH1090**, které jsou běžně dostupné jako náhradní díly za přijatelnou cenu.
 
+![Celkové schéma zapojení](Obrazky/fet-wx.svg)
+
+![Ukázka montáže za využití 3D tištěných dílů. 🙂](Obrazky/20250620_184324.jpg)
 
 <img src="Obrazky/fet-wx.svg" width="800" height="600" alt="schema" /></p>
 <p>Celkové schéma zapojení.</p>
