@@ -15,15 +15,17 @@ Sonda měří rychlost větru každých 20 sekund po dobu 3 sekund. Směr větru
 
 Po 13 cyklech se provede měření tlaku, teploty a vlhkosti. Data se zpracují a odešlou prostřednictvím sítě **LoRa APRS**.
 
-Na serveru [www.aprs.fi](https://www.aprs.fi) lze sledovat historická data.
+Na serveru [www.aprs.fi](https://www.aprs.fi) kde lze sledovat historická data.
 
 Srážky se detekují nepřetržitě. Každých 5 minut se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
 
 Senzory pro vítr a srážky jsou použity z meteostanic **WH1080 / WH1090**, které jsou běžně dostupné jako náhradní díly za přijatelnou cenu.
 
+**Celý kód je bohatě okomentován a veškeré výpočty se prezentují na seriové konsoly při běhu softwaru.**
+
 ![Celkové schéma zapojení](Obrazky/fet-wx.svg)
 
-Celkové schéma zapojení.
+**Celkové schéma zapojení.**
 
 ![Pohled na prototyp meteosondy MetFet 🙂](Obrazky/20250606_231952.jpg)
 
