@@ -1,5 +1,8 @@
-<--! formatovani Markdown nebo html
+<!-- formatovani Markdown nebo html
+kdyz neni obrazek 800x600 
 <img src="Obrazky/obrazek.jpg" width="400" alt="náhled" />
+<p>Celkové schéma zapojení.</p>
+<img src="Obrazky/20250606_231952.jpg" width="800" height="600" alt="schema" /></p> 
 -->
 
 # LoRa meteostanice Fet-Met
@@ -14,7 +17,7 @@ Po 13 cyklech se provede měření tlaku, teploty a vlhkosti. Data se zpracují 
 
 Na serveru [www.aprs.fi](https://www.aprs.fi) lze sledovat historická data.
 
-Srážky se detekují nepřetržitě. Každých 5 sekund se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
+Srážky se detekují nepřetržitě. Každých 5 minut se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
 
 Senzory pro vítr a srážky jsou použity z meteostanic **WH1080 / WH1090**, které jsou běžně dostupné jako náhradní díly za přijatelnou cenu.
 
