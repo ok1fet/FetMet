@@ -5,7 +5,7 @@ kdyz neni obrazek 800x600
 <img src="Obrazky/20250606_231952.jpg" width="800" height="600" alt="schema" /></p> 
 -->
 
-# LoRa meteostanice Fet-Met
+# FetMet LoRa amaterská meteostanice
 
 Meteostanice je postavena na vývojové desce **ESP32 LILYGO T3 v1.6.1**, která má integrovaný LoRa modul na **433 MHz** a OLED displej. Díky tomu je celá konstrukce výrazně zjednodušená.
 
@@ -59,7 +59,7 @@ Orientační kalibrace srážkoměru za pomocí zahradního kolečka. 😅
 
 ![Vin bod pro připojení solárního panelu!!!](Obrazky/20250613_223206.jpg)
 
-Vin bod pro připojení solárního panelu!!!
+!!!U desky LILYGO není vyveden Vin pin. Zde jeVin bod pro připojení solárního panelu!!!
 
 ![Průběh impulsu srážkoměru při změně za kondenzátor M1](Obrazky/20250615_195441.jpg)
 
