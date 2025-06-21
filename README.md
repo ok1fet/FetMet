@@ -61,11 +61,12 @@ Orientační kalibrace srážkoměru za pomocí zahradního kolečka. 😅
 
 ![Vin bod pro připojení solárního panelu!!!](Obrazky/20250613_223206.jpg)
 
-!!!U desky LILYGO není vyveden Vin pin. Zde jeVin bod pro připojení solárního panelu!!!
+!!!U desky LILYGO není vyveden Vin pin. Zde je Vin bod pro připojení solárního panelu!!!
+Nebo můžete solarní panel připojit přes mikro USB.
 
 ![Průběh impulsu srážkoměru při změně za kondenzátor M1](Obrazky/20250615_195441.jpg)
 
-Průběh impulsu srážkoměru při změně za kondenzátor M1.
+Průběh impulsu srážkoměru při změně za kondenzátor M1. Při 10pF občas detekovalo falešnou srážku!
 
 ![Provozní zkoušky porovnávání nové sondy v přírodních podmínkách 💪😁](Obrazky/20250620_190045.jpg)
 
