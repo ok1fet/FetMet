@@ -17,7 +17,7 @@ Po 13 cyklech se provede měření tlaku, teploty a vlhkosti. Data se zpracují 
 
 Na serveru [www.aprs.fi](https://www.aprs.fi) kde lze sledovat historická data.
 
-Srážky se detekují nepřetržitě. Každých 5 minut se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
+Srážky se detekují nepřetržitě. Každých 5 minut (13 cyklus) se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
 
 Senzory pro vítr a srážky jsou použity z meteostanic **WH1080 / WH1090**, které jsou běžně dostupné jako náhradní díly za přijatelnou cenu.
 
