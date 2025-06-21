@@ -9,7 +9,7 @@
  
 const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
 #define VREF              3.657f // kalibrace AD prevodniku
-#define ELEVATION 225            // výška sondy v metrech nad mořem   verzeB325
+#define ELEVATION 225            // výška sondy v metrech nad mořem
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <SPI.h>
@@ -486,6 +486,10 @@ void loop() {}
 konfigurace lokality
   prevest WGS84  N 50°10.84313', E 13°53.28152'zapsat jako  5010.84N/01353.28E
   prevest WGS84  N 49°20.94990', E 14°20.40583'             4920.94N/01420.40E
+
+  OK1FET-11:!5004.91N/01431.53E_338/000g000_BAT=4.17V SNR=11.25 RSSI=-33
+OK1FET-11:!5004.91N/01431.53E_270/000g000t083h59b10211r000_BAT=4.17V SNR=9.50 RSSI=-32
+
   ield  Meaning
  CW0003  Your CW number
 >APRS,TCPIP*: Boilerplate
@@ -500,9 +504,6 @@ p078  Rain in the last 24 hours (in hundreths of an inch) -- this can be omitted
 P044  The rain since the local midnight (in hundreths of an inch) -- this can be omitted
 h50 The humidity in percent. '00' => 100%. -- this can be omitted.
 b10245  The barometric pressure in tenths of millbars -- this can be omitted. This is a corrected pressure and not the actual (station) pressure as measured at your weatherstation. The pressure is adjusted according to altimeter rules -- i.e. the adjustment is purely based on station elevation and does not include temperature compensation.
- 
-OK1FET-11:!5004.91N/01431.53E_338/000g000_BAT=4.17V SNR=11.25 RSSI=-33
-OK1FET-11:!5004.91N/01431.53E_270/000g000t083h59b10211r000_BAT=4.17V SNR=9.50 RSSI=-32
  
 ANT 433MHz
 https://quadmeup.com/3d-printed-433mhz-moxon-antenna-with-arm-and-snap-mount/
