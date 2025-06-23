@@ -3,14 +3,14 @@
   |  ___| ____|_   _|   |  \/  | ____|_   _|
   | |_  |  _|   | |_____| |\/| |  _|   | |  
   |  _| | |___  | |_____| |  | | |___  | |  
-  |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze 1.a
+  |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze 1.0
 
 */
  
 const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
 #define VREF              3.657f // kalibrace AD prevodniku
 #define ELEVATION 225            // výška sondy v metrech nad mořem
-const char* rstv = "RESETa";     // idetifikace ze doslo k reset sondy + verse sw pro orientaci
+const char* rstv = "RESET";     // idetifikace ze doslo k reset sondy + verse sw pro orientaci
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <SPI.h>
@@ -281,8 +281,28 @@ switch (reason) {
    if (!wasResetMsgSent) {
     Serial.print("Prvni spusteni po resetu – posilam ");
 	  Serial.println(rstv);
-    setupLoRa();  // Inicializuj LoRa (musí být před odesláním)
     
+    if (oledHold) {
+  display.ssd1306_command(SSD1306_DISPLAYON);
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.printf("!!!LORA TX!!!");
+  display.setCursor(0, 10);
+  display.printf(station);
+  display.setCursor(0, 40);
+  display.printf(rstv);
+  display.setCursor(0, 50);
+  display.printf("Batt: %.2f V", batv);
+  display.display();
+  oledActive = true;
+} else {
+  display.clearDisplay();
+  display.display(); // zaručí, že je displej fyzicky smazaný
+  display.ssd1306_command(SSD1306_DISPLAYOFF);
+  oledActive = false;
+}
+
+    setupLoRa();  // Inicializuj LoRa (musí být před odesláním)
     // Odeslání zprávy
     LoRa.beginPacket();
     LoRa.write('<');
@@ -355,7 +375,7 @@ switch (reason) {
   display.ssd1306_command(SSD1306_DISPLAYON);
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.printf("bCyklus20s: %d/13", cyklus20s);
+  display.printf("Cyklus20s: %d/13", cyklus20s);
   display.setCursor(0, 10);
   display.printf("Pulsy: %d", SpeedPulseCount);
   display.setCursor(0, 20);
