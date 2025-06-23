@@ -274,6 +274,30 @@ void setup() {
 
 switch (reason) {
 //////////////////////////////////////////////////////////////////////////////////////////////
+//---------------PROBUZENI PO RST NEBO PRIPOJENI NAPETI------------------------------------///
+//////////////////////////////////////////////////////////////////////////////////////////////  
+  case ESP_SLEEP_WAKEUP_UNDEFINED:
+  
+   if (!wasResetMsgSent) {
+    Serial.print("Prvni spusteni po resetu – posilam ");
+	  Serial.println(rstv);
+    setupLoRa();  // Inicializuj LoRa (musí být před odesláním)
+    
+    // Odeslání zprávy
+    LoRa.beginPacket();
+    LoRa.write('<');
+    LoRa.write(0xFF);
+    LoRa.write(0x01);
+	  LoRa.print(station);
+    LoRa.print(rstv);
+    LoRa.endPacket();
+    LoRa.sleep();
+
+    wasResetMsgSent = true;  // Uloží se do RTC a přežije deepsleep
+  }
+    break; 
+
+//////////////////////////////////////////////////////////////////////////////////////////////
 //---------------PROBUZENI OD DESTOVEHO SRAZKOMERU-----------------------------------------///
 //////////////////////////////////////////////////////////////////////////////////////////////  
   case ESP_SLEEP_WAKEUP_EXT0:
@@ -294,7 +318,7 @@ switch (reason) {
   else {
   display.ssd1306_command(SSD1306_DISPLAYOFF);
   oledActive = false;
-}
+   }
   break;
 
    case ESP_SLEEP_WAKEUP_TIMER:
@@ -305,7 +329,7 @@ switch (reason) {
   Serial.println("😁 Provedese 3 sekundove mereni vetru!");
   attachInterrupt(digitalPinToInterrupt(RAIN_PIN), rainInterrupt, RISING);// kdyby prisla srazka v prubehu mereni z 1->0 50ms
 // --- Měření větru (3 s) + 5 vzorků směru ---
-digitalWrite(SRDCE,HIGH); // vynulovani externiho wathdog
+  digitalWrite(SRDCE,HIGH); // vynulovani externiho wathdog
   SpeedPulseCount = 0;
   float dir5x[5] = {0};
   int idx = 0;
@@ -318,7 +342,7 @@ digitalWrite(SRDCE,HIGH); // vynulovani externiho wathdog
       lastSample = millis();
     }
   }
-digitalWrite(SRDCE,LOW);  
+  digitalWrite(SRDCE,LOW);  
   float wSpeed = (SpeedPulseCount * 2.1f) / 3.0f;// prepocet 3 sekund pulsu na MPh
   float wDir = avgDir(dir5x, 5);
   rtc_windSpeedBuf[cyklus20s] = wSpeed;
@@ -452,29 +476,7 @@ digitalWrite(SRDCE,LOW);
   detachInterrupt(digitalPinToInterrupt(RAIN_PIN));
   }
   break;
-//////////////////////////////////////////////////////////////////////////////////////////////
-//---------------PROBUZENI PO RST NEBO PRIPOJENI NAPETI------------------------------------///
-//////////////////////////////////////////////////////////////////////////////////////////////  
-  case ESP_SLEEP_WAKEUP_UNDEFINED:
-  
-   if (!wasResetMsgSent) {
-    Serial.print("Prvni spusteni po resetu – posilam ");
-	Serial.println(rstv);
-    setupLoRa();  // Inicializuj LoRa (musí být před odesláním)
-    
-    // Odeslání zprávy
-    LoRa.beginPacket();
-    LoRa.write('<');
-    LoRa.write(0xFF);
-    LoRa.write(0x01);
-	LoRa.print(station);
-    LoRa.print(rstv);
-    LoRa.endPacket();
-    LoRa.sleep();
 
-    wasResetMsgSent = true;  // Uloží se do RTC a přežije deepsleep
-  }
-    break; 
     }
 //------------------------------------------------------------------------------------------
 //-----------------------------END SWITCH---------------------------------------------------
