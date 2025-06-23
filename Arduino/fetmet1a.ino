@@ -1,3 +1,11 @@
+ /*////////////////////////////////////////////////////////////////////////////////////////////
+   _____ _____ _____     __  __ _____ _____
+  |  ___| ____|_   _|   |  \/  | ____|_   _|
+  | |_  |  _|   | |_____| |\/| |  _|   | |  
+  |  _| | |___  | |_____| |  | | |___  | |  
+  |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze 1.a
+
+*/
  
 const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
 #define VREF              3.657f // kalibrace AD prevodniku
@@ -482,3 +490,67 @@ digitalWrite(SRDCE,LOW);
 }
 
 void loop() {}
+/*
+  ____   ___ ______   _    _    __  __ _  ____   __
+ |  _ \ / _ \__  / \ | |  / \  |  \/  | |/ /\ \ / /
+ | |_) | | | |/ /|  \| | / _ \ | |\/| | ' /  \ V /
+ |  __/| |_| / /_| |\  |/ ___ \| |  | | . \   | |  
+ |_|    \___/____|_| \_/_/   \_\_|  |_|_|\_\  |_|  
+                                                                                         
+  Díky tomu, že meteostanice je postavena na desce ESP32 LILYGO T3 v1.6.1, která má již integrovaný LoRa modul na 
+  frekvenci 433 MHz a displej, je její konstrukce značně zjednodušená.
+  Aby sonda mohla měřit směr a rychlost větru, dešťové srážky, tlak, teplotu a vlhkost, potřebuje pouze pět součástek: 
+  dva kondenzátory, jeden odpor a senzor BME280.
+  Data jsou odesílána na server aprs.fi.
+  Pro měření směru a rychlosti větru a srážek využívá čidel z meteorologické stanice WH1080-90, která lze pořídit jako náhradní díly za rozumnou cenu.
+  
+  
+  Měření větru + déšť + LoRa + OLED + BME280 + hodinový úhrn srážek + DeepSleep 2mA
+  Rain interrupt na pin 12 (EXT0)
+  Agregace po 13 cyklech ktere trvaji 20s = ~5min odeslání
+  Otočení OLED o 180°
+  Správná inicializace BME280 vždy před měřením nekontroluje pripojeni
+  Přidání počítání srážek za uplynulou hodinu a odeslání v APRS poli r###
+  Pocet rain impulsu = 0,3 mm, 10 impuls = 3 mm = 0,118 in ≈ 12 setin → r012
+  Reseno pomoci kruhoveho bufferu za posledni hodinu (12×5min)
+  Ovladani OLED pomoci pinu 13
+  mereni srazek bezi i pri mereni vetru i
+  posle msg po resetu
+  pridelan pin 15 pro srdce externi wathdog reset pri necinosti
+
+konfigurace lokality
+  prevest WGS84  N 50°10.84313', E 13°53.28152'zapsat jako  5010.84N/01353.28E
+  prevest WGS84  N 49°20.94990', E 14°20.40583'             4920.94N/01420.40E
+
+  OK1FET-11:!5004.91N/01431.53E_338/000g000_BAT=4.17V SNR=11.25 RSSI=-33
+OK1FET-11:!5004.91N/01431.53E_270/000g000t083h59b10211r000_BAT=4.17V SNR=9.50 RSSI=-32
+
+  ield  Meaning
+ CW0003  Your CW number
+>APRS,TCPIP*: Boilerplate
+/241505z  The ddhhmm in UTC of the time that you generate the report. However, the timestamp is pretty much ignored by everybody as it is assumed that your clock is not set correctly! If you want to omit this field, then just send an exclamation mark '!' instead.
+4220.45N/07128.59W  Your location. This is ddmm.hh -- i.e. degrees, minutes and hundreths of minutes. The Longitude has three digits of degrees and leading zero digits cannot be omitted.
+_032  The direction of the wind from true north (in degrees).
+/005  The average windspeed in mph
+g008  The maximum gust windspeed in mph (over the last five minutes)
+t054  The temperature in degrees Farenheit -- if not available, then use '...' Temperatures below zero are expressed as -01 to -99.
+r001  The rain in the last 1 hour (in hundreths of an inch) -- this can be omitted
+p078  Rain in the last 24 hours (in hundreths of an inch) -- this can be omitted
+P044  The rain since the local midnight (in hundreths of an inch) -- this can be omitted
+h50 The humidity in percent. '00' => 100%. -- this can be omitted.
+b10245  The barometric pressure in tenths of millbars -- this can be omitted. This is a corrected pressure and not the actual (station) pressure as measured at your weatherstation. The pressure is adjusted according to altimeter rules -- i.e. the adjustment is purely based on station elevation and does not include temperature compensation.
+ 
+ANT 433MHz
+https://quadmeup.com/3d-printed-433mhz-moxon-antenna-with-arm-and-snap-mount/
+https://www.thingiverse.com/thing:2068392/files
+ 
+bme280 how AMSL
+https://www.meteocercal.info/forum/Thread-How-to-get-the-sea-level-pressure-with-BMP280
+
+inspirace
+https://www.instructables.com/Solar-Powered-WiFi-Weather-
+-V30/?utm_source=newsletter&utm_medium=email
+
+VBUS - Solar
+https://github.com/Xinyuan-LilyGO/T-SIM7600X/issues/112
+*/
