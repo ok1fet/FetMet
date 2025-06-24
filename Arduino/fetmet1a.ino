@@ -539,7 +539,8 @@ void loop() {}
   mereni srazek bezi i pri mereni vetru i
   posle msg po resetu
   pridelan pin 15 pro srdce externi wathdog reset pri necinosti
-
+  kdyz je bme280 nedostupne tak posila t214 h00 b214748 !!!!!
+  
 konfigurace lokality
   prevest WGS84  N 50°10.84313', E 13°53.28152'zapsat jako  5010.84N/01353.28E
   prevest WGS84  N 49°20.94990', E 14°20.40583'             4920.94N/01420.40E
