@@ -5,7 +5,7 @@ kdyz neni obrazek 800x600
 <img src="Obrazky/20250606_231952.jpg" width="800" height="600" alt="schema" /></p> 
 -->
 
-# FetMet LoRa amaterská meteostanice
+# FetMet amatérská LoRa meteostanice
 
 Meteostanice je postavena na vývojové desce **ESP32 LILYGO T3 v1.6.1**, která má integrovaný LoRa modul na **433 MHz** a OLED displej. Díky tomu je celá konstrukce výrazně zjednodušená.
 
