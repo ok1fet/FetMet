@@ -7,7 +7,7 @@
 
 */
  
-const char* station = "OK1FET-10>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
+const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
 #define VREF              3.657f // kalibrace AD prevodniku
 #define ELEVATION 225            // výška sondy v metrech nad mořem
 const char* rstv = "000/000g000r000_RESETd";     // idetifikace ze doslo k reset sondy + verse sw pro orientaci
