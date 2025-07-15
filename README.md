@@ -7,21 +7,26 @@ kdyz neni obrazek 800x600
 
 # FetMet amatérská LoRa meteostanice
 
-Meteostanice je postavena na vývojové desce **ESP32 LILYGO T3 v1.6.1**, která má integrovaný LoRa modul na **433 MHz** a OLED displej. Díky tomu je celá konstrukce výrazně zjednodušená.
+Pro měření směru a rychlosti větru, srážek, atmosférického tlaku, teploty a vlhkosti stačí pouze tři elektronické součástky:
+2× kondenzátor, 1× odpor a senzorový modul BME280.
 
-Pro měření směru a rychlosti větru, dešťových srážek, atmosférického tlaku, teploty a vlhkosti stačí pouze čtyři elektronické součástky: **2× kondenzátor**, **1× odpor** a **senzor BME280**!
+Rychlost větru je měřena každých 20 sekund během intervalu 3 sekund.
+Směr větru se vypočítává pomocí Yamartinova algoritmu, který vektorově zpracuje data a provádí korekci směrové odchylky.
 
-Sonda měří rychlost větru každých 20 sekund po dobu 3 sekund. Směr větru se měří pětkrát a hodnoty se zprůměrují.
+Po 13 dvacetisekundových cyklech (tedy každých 5 minut) se provede měření tlaku, teploty a vlhkosti. Výsledná data jsou odesílána prostřednictvím sítě LoRa APRS.
 
-Po 13 cyklech se provede měření tlaku, teploty a vlhkosti. Data se zpracují a odešlou prostřednictvím sítě **LoRa APRS**.
+Historická data lze sledovat online na:[www.aprs.fi](https://www.aprs.fi).
 
-Na serveru [www.aprs.fi](https://www.aprs.fi) kde lze sledovat historická data.
-
+🌧️ Měření srážek
+Srážky jsou detekovány nepřetržitě s přesností 0,3 mm na impuls.
+Data se každých 5 minut ukládají do kruhového bufferu o 12 pozicích, což umožňuje přehled o srážkovém úhrnu za poslední hodinu.
 Srážky se detekují nepřetržitě. Každých 5 minut (13 cyklus) se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
 
-Senzory pro vítr a srážky jsou použity z meteostanic **WH1080 / WH1090**, které jsou běžně dostupné jako náhradní díly za přijatelnou cenu.
+🔩 Použité senzory
+Senzory pro vítr a srážky jsou převzaty z běžně dostupných meteostanic WH1080 / WH1090, které lze snadno zakoupit jako náhradní díly za přijatelnou cenu.
 
-**Celý kód je bohatě okomentován a veškeré výpočty se prezentují na seriové konsoly při běhu softwaru.**
+🧠 Software
+Celý kód je bohatě okomentovaný a všechny výpočty jsou průběžně zobrazovány na sériové konzoli během běhu softwaru.
 
 ![Celkové schéma zapojení](Obrazky/fet-wx.svg)
 
