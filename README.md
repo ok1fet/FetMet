@@ -6,9 +6,10 @@ kdyz neni obrazek 800x600
 -->
 
 # FetMet APRS amatérská LoRa meteostanice
-<span style="color:red;"><strong>Pozor změna používaní pinu 12 který branil programovaní v PCB!!! OPRAVENO </strong></span>/></p> 
-<span style="color:red;"><strong>Červený tučný text</strong></span>
-<span style="color:red;"><strong>Červený tučný text</strong></span>
+
+🟥**Pozor změna používaní pinu 12 který branil programovaní ESP v PCB OPRAVENO**🟥
+
+
 Meteostanice je postavena na vývojové desce ESP32 LILYGO T3 v1.6.1, která obsahuje integrovaný LoRa modul (433 MHz) a OLED displej. Díky tomu je celá konstrukce sondy výrazně zjednodušená.
 
 Pro měření směru a rychlosti větru, srážek, atmosférického tlaku, teploty a vlhkosti stačí pouze tři elektronické součástky:
