@@ -33,7 +33,7 @@ Senzory pro vítr a srážky jsou převzaty z běžně dostupných meteostanic W
 🧠 Software
 Celý kód je bohatě okomentovaný a všechny výpočty jsou průběžně zobrazovány na sériové konzoli během běhu softwaru.
 
-![Celkové schéma zapojení](Obrazky/fet-wx.svg)
+![Celkové schéma zapojení](Obrazky/fet-wx.jpg)
 
 **Celkové schéma zapojení.**
 
