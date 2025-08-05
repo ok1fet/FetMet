@@ -181,6 +181,7 @@ void setupLoRa() {
   LoRa.setSpreadingFactor(12);
   LoRa.setSignalBandwidth(125E3);
   LoRa.setCodingRate4(5);
+  LoRa.enableCrc();  
   Serial.println("LoRa init OK");
 }
 // naformatovani APRS zpravy
