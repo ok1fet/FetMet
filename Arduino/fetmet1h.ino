@@ -3,11 +3,11 @@
   |  ___| ____|_   _|   |  \/  | ____|_   _|
   | |_  |  _|   | |_____| |\/| |  _|   | |  
   |  _| | |___  | |_____| |  | | |___  | |  
-  |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze 1.h
+  |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze 1.h1
 
 */
 /////////////////////////////////////////////////////////////////////////////////////////////
-const char* station = "OK1FET-10>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
+const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
 #define VREF              3.657f // kalibrace AD prevodniku
 #define ELEVATION 225            // výška sondy v metrech nad mořem
 const char* rstv = "000/000g000r000_RESETh";     // idetifikace ze doslo k reset sondy + verse sw pro orientaci
@@ -197,11 +197,11 @@ void setupLoRa() {
   LoRa.setTxPower(17);  // nebo 20 17 14 dBm 20-2  45dBm
 
   // Aktivace PA_BOOST a High Power Mode (20 dBm)
-  //LoRa.setTxPower(20, true);  // true = PA_BOOST 42dBm
+  // LoRa.setTxPower(20, true);  // true = PA_BOOST 42dBm
 
-//  V EU platí limity dle ETSI EN300.220:
-//  Max EIRP 14 dBm bez omezení.
-//  LoRa.setTxPower(14);
+  //  V EU platí limity dle ETSI EN300.220:
+  //  Max EIRP 14 dBm bez omezení.
+  //  LoRa.setTxPower(14);
 
   
   if (!LoRa.begin(433775000)) {  // nastaveni kmitoctu
@@ -305,7 +305,7 @@ void setup() {
 
 switch (reason) {
 //////////////////////////////////////////////////////////////////////////////////////////////
-//---------------PROBUZENI PO RST NEBO PRIPOJENI NAPETI------------------------------------///
+///--------------PROBUZENI PO RST NEBO PRIPOJENI NAPETI------------------------------------///
 //////////////////////////////////////////////////////////////////////////////////////////////  
   case ESP_SLEEP_WAKEUP_UNDEFINED:{
   
@@ -347,7 +347,7 @@ switch (reason) {
     LoRa.sleep();
 
     digitalWrite(GREEN_LED, LOW); // Vypni LED
-    wasResetMsgSent = true;  // Uloží se do RTC a přežije deepsleep
+    wasResetMsgSent = true;       // Uloží se do RTC a přežije deepsleep
     cyklus1s = 0;
     cyklus20s = 0;
     rainCount5min = 0;
@@ -361,7 +361,7 @@ switch (reason) {
   case ESP_SLEEP_WAKEUP_EXT0:{
  cyklus1s++; // každé probuzení = +1 sekunda
  rainCount5min++;
- Serial.printf("💧 Doslo preruseni od srazkomeru je %d/13 cyklus pocet je %d\n", cyklus20s, rainCount5min );
+ Serial.printf("💧 Doslo preruseni od srazkomeru je %d/12 cyklus pocet je %d\n", cyklus20s, rainCount5min );
 
  
   if (oledHold) {
@@ -373,7 +373,7 @@ switch (reason) {
   display.setCursor(0, 0);
   display.printf("!!!RAIN+INTERRUPT!!!");
   display.setCursor(0, 10);
-  display.printf("Cyklus20s: %d/13", cyklus20s);
+  display.printf("Cyklus20s: %d/12", cyklus20s);
   display.setCursor(0, 20);
   display.printf("RainCount : %.d pocet", rainCount5min);
   display.display();
@@ -399,12 +399,12 @@ cyklus1s++; // každé probuzení = +1 sekunda
   display.ssd1306_command(SSD1306_DISPLAYOFF);
   oledActive = false;}
 
-  // každých 20 s = základní meteorologické měření
-  if (cyklus1s % 20 == 0) {
+  // každých 18s + 3s základní meteorologické měření = 20s
+  if (cyklus1s % 18 == 0) {
 
   cyklus1s   = 0;
   cyklus20s++;
-  Serial.printf("📡 Doslo k preruseni od casovace 20s je %d/13 cyklus.📡\n", cyklus20s);
+  Serial.printf("📡 Doslo k preruseni od casovace 20s je %d/11 cyklus.📡\n", cyklus20s);
   Serial.println("😁 Provedese 3 sekundove mereni vetru!");
   attachInterrupt(digitalPinToInterrupt(RAIN_PIN), rainInterrupt, RISING);// kdyby prisla srazka v prubehu mereni z 1->0 50ms
 // --- Měření větru (3 s) + 5 vzorků směru ---
@@ -438,7 +438,7 @@ cyklus1s++; // každé probuzení = +1 sekunda
   display.ssd1306_command(SSD1306_DISPLAYON);
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.printf("Cyklus20s: %d/13", cyklus20s);
+  display.printf("Cyklus20s: %d/11", cyklus20s);
   display.setCursor(0, 10);
   display.printf("Pulsy: %d", SpeedPulseCount);
   display.setCursor(0, 20);
@@ -453,12 +453,12 @@ cyklus1s++; // každé probuzení = +1 sekunda
   oledActive = true;}
 
 //konec 20 sekundoveho cyklu
-  Serial.printf("Cyklus %d/13 | %d speed pulse = %.1f m/s  smer %.0f° rain pulse %d bat %.2fV\n", cyklus20s, SpeedPulseCount, (wSpeed*0.44704), wDir, rainCount5min, readBat());
+  Serial.printf("Cyklus %d/11 | %d speed pulse = %.1f m/s  smer %.0f° rain pulse %d bat %.2fV\n", cyklus20s, SpeedPulseCount, (wSpeed*0.44704), wDir, rainCount5min, readBat());
 //-----------------------------------------------------------------
-//------- Agregace a odeslání dat po 5 minutach = 13 cyklech ------
+//------- Agregace a odeslání dat po 5 minutach = 11 cyklech ------
 //-----------------------------------------------------------------  
-// 13 cyklu x 20 sekund + 30 tx msg = 300 sekund = 5 minut
-  if (cyklus20s >= 13) {
+// 11 cyklu x 20 sekund + 30 tx msg = 300 sekund = 5 minut
+  if (cyklus20s >= 11) {
     Serial.println("AGREGACE DAT PO 5MIN!");
         // kdyz je napeti pod 3,3V bude poslana kratka msg jen vitr a baterie a deepsleep bude nastaven na 30 minut!!!
         if (batv < 3.3f) {
@@ -467,11 +467,11 @@ cyklus1s++; // každé probuzení = +1 sekunda
 // vypocet prumernych hodnot a maximalni hodnoty vwreu
   //float maxSp;
   float maxSp  = rtc_maxWindBuf;
-  float avgSp  = avgSpeed(rtc_windSpeedBuf, 13, &maxSp);
-  float avgDr  = avgDirYamartino(rtc_windDirBuf, 13);
+  float avgSp  = avgSpeed(rtc_windSpeedBuf, 11, &maxSp);
+  float avgDr  = avgDirYamartino(rtc_windDirBuf, 11);
  
  // smaze hodinovy srazkomer
-  for (int i = 0; i < 13; i++) {
+  for (int i = 0; i < 11; i++) {
   rainBuf60[i] = 0;
 }
 
@@ -506,8 +506,8 @@ cyklus1s++; // každé probuzení = +1 sekunda
     }
     //float maxSP;
     float maxSp = rtc_maxWindBuf;
-    float avgSp = avgSpeed(rtc_windSpeedBuf, 13, &maxSp);
-    float avgDr  = avgDirYamartino(rtc_windDirBuf, 13);
+    float avgSp = avgSpeed(rtc_windSpeedBuf, 11, &maxSp);
+    float avgDr  = avgDirYamartino(rtc_windDirBuf, 11);
 
    
     float tC = bme.readTemperature();
@@ -567,7 +567,7 @@ cyklus1s++; // každé probuzení = +1 sekunda
 //-----------------------------END SWITCH---------------------------------------------------
 //------------------------------------------------------------------------------------------
  
-  // --- Pokud ještě nejsme u 13 cyklů, naplánujeme další probuzení za 20s ( + déšť ) ---
+  // --- Pokud ještě nejsme u 11 cyklů, naplánujeme další probuzení za 20s ( + déšť ) ---
   esp_sleep_enable_ext0_wakeup((gpio_num_t)RAIN_PIN, 0);
   esp_sleep_enable_timer_wakeup(sleepInterval * 1000ULL);
   Serial.printf("😴 set %.d ms DeepSleep!", sleepInterval);
@@ -603,7 +603,7 @@ void loop() {}
   
   Měření větru + déšť + LoRa + OLED + BME280 + hodinový úhrn srážek + DeepSleep 2mA
   Rain interrupt na pin 12 (EXT0)
-  Agregace po 13 cyklech ktere trvaji 20s = ~5min odeslání
+  Agregace po 11 cyklech ktere trvaji 20s = ~5min odeslání
   Otočení OLED o 180°
   Správná inicializace BME280 vždy před měřením nekontroluje pripojeni
   Přidání počítání srážek za uplynulou hodinu a odeslání v APRS poli r###
