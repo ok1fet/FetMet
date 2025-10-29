@@ -7,7 +7,7 @@
 */
 /////////////////////////////////////////////////////////////////////////////////////////////
 const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
-#define VREF              3.657f // kalibrace AD prevodniku
+#define VREF              3.657f // kalibrace AD prevodniku VREF = 3.657 × (4.17 hw / 4.34 skutecna hodnoty ) ≈ 3.657 × 0.960 ≈ 3.513
 #define ELEVATION 225            // výška sondy v metrech nad mořem
 const char* rstv = "000/000g000r000_RESETj";     // identifikace resetu sondy + verse SW
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,14 +54,14 @@ bool oledActive = false;
 
 volatile int SpeedPulseCount = 0;
 
-RTC_DATA_ATTR int rainBuf60[13] = {0};  // kruhovy buffer definici od nuly
+RTC_DATA_ATTR int rainBuf60[12] = {0};  // kruhovy buffer definici od nuly
 RTC_DATA_ATTR int rainBuf60Poradi = 0;  // index v bufferu
 RTC_DATA_ATTR int rainCount5min = 0;    // sčítá pulsy během 5min intervalu
 RTC_DATA_ATTR int rainSum60 = 0;        // index v bufferu
 RTC_DATA_ATTR int rainBuf24h[24] = {0};  // kruhový buffer pro 24 hodin
 RTC_DATA_ATTR int rainBuf24hPoradi = 0;  // index pro zápis hodinového úhrnu
 RTC_DATA_ATTR int rainSum24 = 0;         // součet za 24h
-
+RTC_DATA_ATTR int callCount = 0;
 
 RTC_DATA_ATTR int cyklus20s = 0;
 RTC_DATA_ATTR int cyklus1s = 0;
@@ -176,15 +176,14 @@ float readBat() {
 // Mereni srazek s hodinovym a 24hodinovym kruhovym bufferem
 // 💧 Měření srážek – 5min, 1h a 24h agregace
 float rain() {
-  // Uložení 5min úhrnu do hodinového bufferu
+  // --- 5min slot ---
   rainBuf60[rainBuf60Poradi] = rainCount5min;
   DebugPrintf("💧 5min srážkový slot %d/12 = %d pulzů\n", rainBuf60Poradi, rainCount5min);
 
-  // Posun indexu 5min bufferu
   rainBuf60Poradi = (rainBuf60Poradi + 1) % 12;
-  rainCount5min = 0;  // Reset krátkodobého čítače
+  rainCount5min = 0;
 
-  // --- Hodinový součet (12 × 5min) ---
+  // --- Hodinový součet ---
   int sumHour = 0;
   for (int i = 0; i < 12; i++) sumHour += rainBuf60[i];
   rainSum60 = sumHour;
@@ -194,53 +193,29 @@ float rain() {
   static int callCount = 0;
   callCount++;
 
-  if (callCount >= 12) { // 12 × 5min = 1 hodina
+  if (callCount >= 12) {
+    // nejdřív uložit a NEPOSOUVAT hned index
     rainBuf24h[rainBuf24hPoradi] = rainSum60;
+    DebugPrintf("🕐 Uloženo do 24h bufferu [%d]: %d pulzů\n", rainBuf24hPoradi, rainSum60);
+
+    // až teď posun index
     rainBuf24hPoradi = (rainBuf24hPoradi + 1) % 24;
     callCount = 0;
-    DebugPrintf("🕐 Uloženo do 24h bufferu [%d]: %d pulzů\n", rainBuf24hPoradi, rainSum60);
   }
 
-  // --- Výpočet 24h součtu (průběžný od startu) ---
+  // --- Výpočet 24h součtu (rolling) ---
   int sum24 = 0;
   for (int i = 0; i < 24; i++) sum24 += rainBuf24h[i];
-  sum24 += rainSum60;  // přidej i aktuální hodinový úhrn
+
+  // přičti právě běžící hodinu (i když zatím není uzavřená)
+  sum24 += rainSum60;
+
   rainSum24 = sum24;
+  DebugPrintf("📆 24h součet (rolling): %d pulzů = p%03d\n", rainSum24, rainSum24);
 
-  DebugPrintf("📆 24h průběžný součet: %d pulzů = p%03d\n", rainSum24, rainSum24);
-
-  return rainSum60; // Vrací hodinový úhrn
+  return rainSum60;
 }
 
-// float rain(){
-//     rainBuf60[rainBuf60Poradi] = rainCount5min;// Srážkový buffer počet pulsu za 5 min
-//     DebugPrintf("Srazky 60 minutovy kruhovy buffer poradi %d/12 hodnota %d  5min x12 cyklu = 60 minut\n", rainBuf60Poradi, rainCount5min);
-//     rainBuf60Poradi = (rainBuf60Poradi + 1) % 12;
-//     rainCount5min = 0;// Reset 5-min počítadla pro další interval
-//     int sumHour = 0;
-//     // Výpis celého bufferu
-//     DebugPrint("Obsah rainBuf60: ");
-//     for (int i = 0; i < 12; i++) {
-//       DebugPrintf("%d ", rainBuf60[i]);
-//     }
-//     DebugPrintln("");
-//     // Vypočteme hodinový součet jako součet všech 12 položek v kruhovem bufferu
-//     for (int i = 0; i < 12; i++) sumHour += rainBuf60[i];
-//     // Součet pulsu za hodinu -> setiny palců (každý puls ~0.3mm = 0.0118 in → v setinách ~1.18
-//     // Pro zjednodušení posíláme přímo rainSum60 jako setiny palců.
-//     rainSum60 = sumHour;  // 1 puls = 1/100 inch tady je prostor pro kalibraci
-//     DebugPrintf("60 minutovy soucet rain impulsu: %d bude formatovano jako r%03d\n", rainSum60, rainSum60);
-
-//     // --- AGREGACE 24 HODIN ---
-//     rainBuf24h[rainBuf24hPoradi] = rainSum60; // uloží hodinový úhrn
-//     rainBuf24hPoradi = (rainBuf24hPoradi + 1) % 24; // posun indexu
-//     int sum24 = 0;
-//     for (int i = 0; i < 24; i++) sum24 += rainBuf24h[i];
-//     rainSum24 = sum24;
-//     DebugPrintf("24h součet rain impulsů: %d bude formatován jako p%03d\n", rainSum24, rainSum24);
-
-//     return (int)rainSum60;
-// }
 // Nastaveni LoRa protokolu
 void setupLoRa() {
   SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_SS);
@@ -314,55 +289,6 @@ void sendMsg(float avgSp, float avgDr, float maxSp, float batv, bool shortFormat
 // Po odeslání zhasni LED
   digitalWrite(GREEN_LED, LOW);
 }
-//==============================================
-void testProgram() {
-    // Reset RTC bufferů pro čistý test
-    rainBuf60Poradi = 0;
-    rainCount5min = 0;
-    rainSum60 = 0;
-    rainBuf24hPoradi = 0;
-    rainSum24 = 0;
-    cyklus1s = 0;
-    cyklus20s = 0;
-    rtc_maxWindBuf = 0;
-    for (int i = 0; i < 13; i++) {
-        rtc_windSpeedBuf[i] = 0;
-        rtc_windDirBuf[i]   = 0;
-    }
-
-    Serial.println("=== ZAČÁTEK TESTU ===");
-
-    for (int i = 1; i <= TEST_CYKLUS20S; i++) {
-        cyklus20s = i;
-
-        // Simulace náhodné rychlosti větru a směru
-        float wSpeed = random(0, 20) * 1.0f;  // m/s
-        float wDir   = random(0, 360);        // stupně
-
-        rtc_windSpeedBuf[i-1] = wSpeed;
-        rtc_windDirBuf[i-1]   = wDir;
-        rtc_maxWindBuf = max(rtc_maxWindBuf, wSpeed);
-
-        // Simulace srážek
-        rainCount5min = random(0, 5); // náhodně 0–5 pulzů
-        int rainSum60 = rain();       // aktualizuje 1h a 24h buffer
-
-        // Výpis na Serial místo LoRa
-        Serial.printf("Cyklus %d/%d | Speed %.1f m/s | Dir %.0f° | RainSum60 %d | RainSum24 %d\n",
-                      i, TEST_CYKLUS20S, wSpeed, wDir, rainSum60, rainSum24);
-
-        delay(TEST_INTERVAL_MS);
-    }
-
-    // Agregace po posledním cyklu
-    float maxSp = rtc_maxWindBuf;
-    float avgSp = avgSpeed(rtc_windSpeedBuf, TEST_CYKLUS20S, &maxSp);
-    float avgDr = avgDirYamartino(rtc_windDirBuf, TEST_CYKLUS20S);
-
-    Serial.println("=== KONEC TESTU ===");
-    Serial.printf("AVG Speed: %.2f m/s | MAX Speed: %.2f m/s | AVG Dir: %.1f°\n", avgSp, maxSp, avgDr);
-    Serial.printf("Celkový součet srážek 24h: %d\n", rainSum24);
-}
 
 //=======================================================================================
 void setup() {
@@ -389,13 +315,6 @@ void setup() {
   display.setRotation(2);                     // Nastavení rotace displeje o 180°
   display.setTextSize(1);                     // Velikost textu
   display.setTextColor(SSD1306_WHITE);        // Barva textu
-  
-///////test
-//testProgram();
-//}
-///////test
-
-
 
 // Zjistíme důvod probuzení
   esp_sleep_wakeup_cause_t reason = esp_sleep_get_wakeup_cause();
@@ -464,6 +383,9 @@ void setup() {
           rtc_windSpeedBuf[i] = 0;
           rtc_windDirBuf[i]   = 0;
         }
+  // Pokud chceš ručně nulovat buffery po tvrdém resetu:
+  // memset(rainBuf24h, 0, sizeof(rainBuf24h));
+  // memset(rainBuf60, 0, sizeof(rainBuf60));
 
         DebugPrintln("🧹 RTC paměť, srážkové a větrné buffery byly vymazány!");
       }
@@ -683,7 +605,7 @@ if (rainSumCheck > 0 || rainCount5min > 0) {
   DebugPrintln("🌧️ Aktivní déšť – rychlý 1s režim měření");
 } else {
   // Jinak pomalý režim – jen jednou za 20 sekund
-  nextSleepInterval = 19000;   // 20 sekund
+  nextSleepInterval = 19500;   // 20 sekund
   cyklus1s = 14;               // aby se 20s měření spouštělo každých 20 sekund
   DebugPrintln("☀️ Bez deště – zpomaluji měření na 20s interval");
 }
@@ -694,7 +616,6 @@ esp_sleep_enable_timer_wakeup(nextSleepInterval * 1000ULL);
 DebugPrintf("😴 DeepSleep nastaven na %lu ms!\n", nextSleepInterval);
 delay(50);
 esp_deep_sleep_start();
-
 } // end setup()
 
 void loop() {} 
@@ -705,6 +626,7 @@ void loop() {}
  |  __/| |_| / /_| |\  |/ ___ \| |  | | . \   | |  
  |_|    \___/____|_| \_/_/   \_\_|  |_|_|\_\  |_|  
 
+   dalsi verze bude vyuzivat externí pin (heartbeat) :)
   verze J dodelan 24h uhrn srazek + kombinovyny DeepSleep 1s i 20s 
   verze I pri off display pin 4 vypnese i serial
   verze H z duvodu prutrze mracen tak aby se neprodluzovani cas agregace po 5 minutach predelan cyklus deep sleep 20s-->1s
