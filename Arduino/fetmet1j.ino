@@ -11,6 +11,8 @@ const char* station = "OK1FET-99>APRS:!5004.91N/01431.53E_";  // vypocet loc je 
 #define ELEVATION 225            // výška sondy v metrech nad mořem
 const char* rstv = "000/000g000r000_RESETj";     // identifikace resetu sondy + verse SW
 /////////////////////////////////////////////////////////////////////////////////////////////
+// const char* rstv = "000/000g000r000_RESETj";     // identifikace resetu sondy + verse SW
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <SPI.h>
 #include <LoRa.h>
@@ -62,7 +64,7 @@ RTC_DATA_ATTR int rainBuf24h[24] = {0};  // kruhový buffer pro 24 hodin
 RTC_DATA_ATTR int rainBuf24hPoradi = 0;  // index pro zápis hodinového úhrnu
 RTC_DATA_ATTR int rainSum24 = 0;         // součet za 24h
 RTC_DATA_ATTR int callCount = 0;
-
+RTC_DATA_ATTR int rainCallCount = 0;
 RTC_DATA_ATTR int cyklus20s = 0;
 RTC_DATA_ATTR int cyklus1s = 0;
 RTC_DATA_ATTR float rtc_windSpeedBuf[13];
@@ -190,28 +192,36 @@ float rain() {
   DebugPrintf("🌦️ Hodinový součet: %d pulzů = r%03d\n", rainSum60, rainSum60);
 
   // --- Každou hodinu ulož do 24h bufferu ---
-  static int callCount = 0;
-  callCount++;
-
-  if (callCount >= 12) {
-    // nejdřív uložit a NEPOSOUVAT hned index
+  rainCallCount++;
+  bool savedThisCall = false;
+  if (rainCallCount >= 12) {
+    // uložíme právě uzavřenou hodinu do bufferu
     rainBuf24h[rainBuf24hPoradi] = rainSum60;
+    // DEBUG: vypis indexu kam zapisujeme (ukazujeme index před posunem)
     DebugPrintf("🕐 Uloženo do 24h bufferu [%d]: %d pulzů\n", rainBuf24hPoradi, rainSum60);
 
-    // až teď posun index
     rainBuf24hPoradi = (rainBuf24hPoradi + 1) % 24;
-    callCount = 0;
+    rainCallCount = 0;
+    savedThisCall = true;
   }
 
   // --- Výpočet 24h součtu (rolling) ---
   int sum24 = 0;
   for (int i = 0; i < 24; i++) sum24 += rainBuf24h[i];
 
-  // přičti právě běžící hodinu (i když zatím není uzavřená)
-  sum24 += rainSum60;
+  // přidej současnou (neuzavřenou) hodinu vždy — to dává "průběžný" 24h součet
+  // Pozn.: i pokud jsme právě uložili hodinu do bufferu, ta hodina už je v bufferu,
+  // takže přičtení rainSum60 zde bude znamenat, že se daná hodina započítá dvakrát.
+  // Řešení: pokud jsme právě uložili (savedThisCall==true), **nesmíme** přičítat rainSum60 znovu.
+  if (!savedThisCall) {
+    sum24 += rainSum60;
+  }
 
   rainSum24 = sum24;
   DebugPrintf("📆 24h součet (rolling): %d pulzů = p%03d\n", rainSum24, rainSum24);
+
+  // Další debug — ukázat rainCallCount a poradi bufferu
+  DebugPrintf("🔁 rainCallCount=%d, rainBuf24hPoradi=%d\n", rainCallCount, rainBuf24hPoradi);
 
   return rainSum60;
 }
@@ -315,7 +325,7 @@ void setup() {
   display.setRotation(2);                     // Nastavení rotace displeje o 180°
   display.setTextSize(1);                     // Velikost textu
   display.setTextColor(SSD1306_WHITE);        // Barva textu
-
+  
 // Zjistíme důvod probuzení
   esp_sleep_wakeup_cause_t reason = esp_sleep_get_wakeup_cause();
 
@@ -616,9 +626,10 @@ esp_sleep_enable_timer_wakeup(nextSleepInterval * 1000ULL);
 DebugPrintf("😴 DeepSleep nastaven na %lu ms!\n", nextSleepInterval);
 delay(50);
 esp_deep_sleep_start();
+
 } // end setup()
 
-void loop() {} 
+void loop() {}
 /*
   ____   ___ ______   _    _    __  __ _  ____   __
  |  _ \ / _ \__  / \ | |  / \  |  \/  | |/ /\ \ / /
