@@ -4,12 +4,12 @@
   | |_  |  _|   | |_____| |\/| |  _|   | |  
   |  _| | |___  | |_____| |  | | |___  | |  
   |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze 1.k
-
-*//////////////////////////////////////////////////////////////////////////////////////////////
+*/
+/////////////////////////////////////////////////////////////////////////////////////////////
 const char* station = "OK1FET-73>APRS:!5004.91N/01431.53E_";  // vypocet loc je v poznamkach
-#define VREF              3.656f // kalibrace AD prevodniku nové VREF = 3.657 × (4.17 hw / 4.34 mp ) ≈ 3.657 × 0.960 ≈ 3.513
+#define VREF              3.658f // HW1 kalibrace AD prevodniku nové VREF = 3.658 × (4.17 hw / 4.34 mp ) ≈ 3.658 × 0.960 ≈ 3.513
 #define ELEVATION 225            // výška sondy v metrech nad mořem
-const char* rstv = "000/000g000r000_RESETk";     // identifikace resetu sondy + verse SW
+const char* rstv = "000/000g000r000_RESETk";     // idetifikace ze doslo k reset sondy + verse sw pro orientaci
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <SPI.h>
@@ -45,7 +45,7 @@ bool oledActive = false;
 #define WIND_DIR_PIN      34      // 10K odpor direction
 #define RAIN_PIN          13      // srazkomer RTC GPIO 12
 #define GREEN_LED         25      // integrovana led
-#define SRDCE             15      // pin pro pripojeni externiho resetu
+#define SRDCE             15    // pin pro pripojeni externiho resetu
 
 // --- TESTOVACÍ BLOK PRO RYCHLÉ LADĚNÍ ---
 #define TEST_CYKLUS20S 13
@@ -54,23 +54,20 @@ bool oledActive = false;
 
 volatile int SpeedPulseCount = 0;
 
-RTC_DATA_ATTR int rainBuf1h[12] = {0};    // kruhovy buffer definici od nuly
-RTC_DATA_ATTR int rainBuf1hPoradi = 0;    // index v bufferu
-RTC_DATA_ATTR int rainCount5min = 0;      // sčítá pulsy během 5min intervalu
-RTC_DATA_ATTR int rainSum1h = 0;          // index v bufferu
-RTC_DATA_ATTR int rainBuf24h[288] = {0};  // kruhový buffer pro 24 hodin
-RTC_DATA_ATTR int rainBuf24hPoradi = 0;   // index pro zápis hodinového úhrnu
-RTC_DATA_ATTR long rainSum24h = 0;        // součet za 24h
+RTC_DATA_ATTR int rainBuf1h[12] = {0};  // kruhovy buffer definici od nuly
+RTC_DATA_ATTR int rainBuf1hPoradi = 0;  // index v bufferu
+RTC_DATA_ATTR int rainCount5min = 0;    // sčítá pulsy během 5min intervalu
+RTC_DATA_ATTR int rainSum1h = 0;        // index v bufferu
+RTC_DATA_ATTR long rainBuf24h[288] = {0};  // kruhový buffer pro 24 hodin
+RTC_DATA_ATTR int rainBuf24hPoradi = 0;  // index pro zápis hodinového úhrnu
+RTC_DATA_ATTR int rainSum24h = 0;         // součet za 24h
 RTC_DATA_ATTR int cyklus20s = 0;
 RTC_DATA_ATTR int cyklus1s = 0;
 RTC_DATA_ATTR float rtc_windSpeedBuf[13];
 RTC_DATA_ATTR float rtc_windDirBuf[13];
 RTC_DATA_ATTR float rtc_maxWindBuf = 0;
-RTC_DATA_ATTR int VoltageCycle = 0;         // Počítadlo při napětí < 3.3V
-RTC_DATA_ATTR bool wasResetMsgSent = false;    
-
-
-// idetifikace reset nebo prvnimu spusteni
+RTC_DATA_ATTR int VoltageCycle = 0;
+RTC_DATA_ATTR bool wasResetMsgSent = false;// idetifikace reset nebo prvnimu spusteni
 
 Adafruit_BME280 bme;
 
@@ -168,16 +165,16 @@ float avgDirYamartino(float* a, int n, float* stdDevOut = nullptr) {
 
   return avgDirDeg;
 }
+
 // mereni napeti baterie
 float readBat() {
   int r = analogRead(BATTERY_PIN);
   return (r / 4095.0f * VREF) / 0.5f;
 }
-// Mereni srazek s hodinovym kruhovym buferem
-// Mereni srazek s hodinovym a 24hodinovym kruhovym bufferem
-// 💧 Měření srážek – 5min, 1h a 24h agregace
+
+// 💧 Měření srážek – 5min, 1h a 24h agregace s kruhovym bufferem
 float rain() {
-  DebugPrintf("💧 5min slot %d/12 = %d pulzů\n", rainBuf1hPoradi, rainCount5min);
+  DebugPrintf("5min slot %d/12 = %d pulzů\n", rainBuf1hPoradi, rainCount5min);
 
   rainBuf1h[rainBuf1hPoradi] = rainCount5min;
   rainBuf24h[rainBuf24hPoradi] = rainCount5min;
@@ -195,7 +192,7 @@ float rain() {
   rainCount5min = 0;
 
   return rainSum1h;
-  }
+}
 
 // Nastaveni LoRa protokolu
 void setupLoRa() {
@@ -218,63 +215,68 @@ void setupLoRa() {
   LoRa.enableCrc();
   DebugPrintln("LoRa init OK");
 }
-// naformatovani APRS zpravy
-void sendMsg(float avgSp, float avgDr, float maxSp, float batv, bool shortFormat,
-             float tF = 0, float pres = 0, float hum = 0, int rainSum1h = 0, int rainSum24h = 0) {
-// Zkontroluj pin 13 - pokud je HIGH rozsvit LED na pinu 25
+
+// ====================================================================
+// Naformatovani APRS zprávy přes LoRa (t,b,h,P,r,p + baterie)
+// ====================================================================
+void sendMsg(float avgSp, float avgDr, float maxSp, float batv,
+             float tF, float pres, float hum, int rain1h, int rain24h) {
+
+  // Indikace vysílání na zelené LED (jen pokud je OLED zapnutý)
   if (digitalRead(OLED_ON_PIN) == HIGH) {
     digitalWrite(GREEN_LED, HIGH);
   }
-  // Přepočet impulsy v Hz na mph a zaokrouhlení
-  // rychlost MPh  1Hz = rychlost větru 2,4km/h 100 km/h * 0,621371 = 62,1371 mph
-  int sp_mph   = round(avgSp * 0.621371f);// průměr na MP/h
-  int max_mph  = round(maxSp * 0.621371f);// náraz na MP/h
+
+  // Přepočet rychlosti a nárazu na mph (APRS formát)
+  int sp_mph  = round(avgSp * 0.621371f);
+  int gust_mph = round(maxSp * 0.621371f);
 
   char msg[128];
   char dirStr[4], spStr[4], gustStr[4], batStr[10];
-  snprintf(dirStr,  sizeof(dirStr),  "%03d", (int)avgDr);      // DDD
-  snprintf(spStr,   sizeof(spStr),   "%03d", sp_mph);          // SSS
-  snprintf(gustStr, sizeof(gustStr), "%03d", max_mph);         // GGG
-  snprintf(batStr,  sizeof(batStr),  "_B%.2fV", batv);         //_B3.70V
-  if (shortFormat) {
-      // Krátká zpráva
-    snprintf(msg, sizeof(msg), "%s%s/%sg%s%s", station, dirStr, spStr, gustStr, batStr);
-  } else {
-        // Doplňkové části
-    char tempStr[5], humStr[4], presStr[8], rainStr[5] , rain24Str[5];
-    snprintf(tempStr, sizeof(tempStr), "t%03d", (int)tF);// tNNN
+  char tempStr[5], humStr[4], presStr[8], rainStr[5], rain24Str[5];
 
-    if ((int)hum >= 100)
-      snprintf(humStr, sizeof(humStr), "h00"); // 100% → h00
-    else
-      snprintf(humStr, sizeof(humStr), "h%02d", (int)hum); // hNN
+  snprintf(dirStr,   sizeof(dirStr),   "%03d", (int)avgDr);
+  snprintf(spStr,    sizeof(spStr),    "%03d", sp_mph);
+  snprintf(gustStr,  sizeof(gustStr),  "%03d", gust_mph);
+  snprintf(batStr,   sizeof(batStr),   "_B%.2fV", batv);
 
-    snprintf(presStr, sizeof(presStr), "b%05d", (int)pres);// bNNNNN
-    snprintf(rainStr, sizeof(rainStr), "r%03d", rainSum1h); // rNNN
-    snprintf(rain24Str, sizeof(rain24Str), "p%03d", rainSum24h); // pNNN (24h srážky)
-// Plná zpráva
-    snprintf(msg, sizeof(msg), "%s%s/%sg%s%s%s%s%s%s%s",
-         station, dirStr, spStr, gustStr, tempStr, humStr, presStr, rainStr, rain24Str, batStr);
-  }
- // Odeslání přes LoRa
-  DebugPrint("LoRa vysílá: ");
+  snprintf(tempStr,  sizeof(tempStr),  "t%03d", (int)tF);
+  snprintf(humStr,   sizeof(humStr),   "h%02d", (int)hum >= 100 ? 0 : (int)hum);
+  snprintf(presStr,  sizeof(presStr),  "b%05d", (int)pres);
+  snprintf(rainStr,  sizeof(rainStr),  "r%03d", rain1h);
+  snprintf(rain24Str,sizeof(rain24Str),"p%03d", rain24h);
+
+  // Vždy plná zpráva – čistá, přehledná, bez podmínek
+  snprintf(msg, sizeof(msg),
+           "%s%s/%sg%s%s%s%s%s%s%s",
+           station, dirStr, spStr, gustStr,
+           tempStr, humStr, presStr, rainStr, rain24Str, batStr);
+
+  DebugPrint("LoRa TX: ");
   DebugPrintln(msg);
 
   LoRa.beginPacket();
-  LoRa.write('<');// tohle jsem Googlil nekolik hodin :(
+  LoRa.write('<');
   LoRa.write(0xFF);
   LoRa.write(0x01);
   LoRa.print(msg);
   LoRa.endPacket();
   LoRa.sleep();
-// Po odeslání zhasni LED
-  digitalWrite(GREEN_LED, LOW);
-}
 
+  digitalWrite(GREEN_LED, LOW);  // zhasni LED
+}
 //=======================================================================================
 void setup() {
 //=======================================================================================
   setCpuFrequencyMhz(40);
+  // =================================================
+  // FIX nízké spotřeby pro RAIN_PIN = 13 (nebo 12, 15)
+  // =================================================
+  gpio_deep_sleep_hold_dis();                    // globálně vypne hold všech pinů
+  rtc_gpio_pullup_dis((gpio_num_t)RAIN_PIN);     // vypne interní pull-up v deep-sleepu
+  gpio_hold_dis((gpio_num_t)RAIN_PIN);           // pojistka pro strapping pin
+  // =================================================
+
   Serial.begin(115200);
   delay(200);
   while (!Serial);
@@ -356,7 +358,7 @@ void setup() {
         // Reset 24hodinového srážkového bufferu
         rainSum24h        = 0;
         rainBuf24hPoradi = 0;
-        for (int i = 0; i < 288; ++i) rainBuf24h[i] = 0;
+        for (int i = 0; i < 24; ++i) rainBuf24h[i] = 0;
 
         // Reset bufferů pro vítr
         rtc_maxWindBuf = 0;
@@ -399,6 +401,7 @@ void setup() {
 
       break;
     }
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///--------------PROBUZENI OD 20 SEKUNDOVEHO CASOVACE--------------------------------------///
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +450,7 @@ if (oledHold) {
         rtc_windSpeedBuf[writeIdx] = wSpeed;
         rtc_windDirBuf[writeIdx]   = wDir;
 
-//kdyz na pin13 jo 0 display bude zobrazovat jinak ne. O 3mA se snizi spotreba
+//kdyz na pin 4 jo 0 display bude zobrazovat jinak ne. O 3mA se snizi spotreba
         if (oledHold) {
           display.ssd1306_command(SSD1306_DISPLAYOFF);
           oledActive = false;
@@ -478,7 +481,7 @@ if (oledHold) {
         // 13 cyklu x 20 sekund + 80 tx msg = 300 sekund = 5 minut
         if (cyklus20s >= 13) {
           DebugPrintln("AGREGACE DAT PO 5MIN!");
-        
+
           setupLoRa();
           if (!bme.begin(0x76)) {
             DebugPrintln("BME280 init selhalo!");
@@ -491,7 +494,7 @@ if (oledHold) {
           float tF = tC * 1.8f + 32.0f;//prepocet °C na °F
           float pres = (bme.readPressure())/pow((1-ELEVATION/44330.0), 5.255)/10;// prepocet tlaku na hladinu more
           float hum = bme.readHumidity();
-          int rainSum1h = rain();
+          int rainSum60 = rain();
 
           DebugPrintf("avgSp je: %.0f\n", avgSp);
           DebugPrintf("maxSp je: %.0f\n", maxSp);
@@ -500,8 +503,7 @@ if (oledHold) {
           DebugPrintf("TeplC je: %.0f\n", tC);
           DebugPrintf("pres  je: %.0f\n", pres);
           DebugPrintf("hum   je: %.0f\n", hum);
-          DebugPrintf("rain01  je: %.03d\n", rainSum1h);
-          DebugPrintf("rain24  je: %.03d\n", rainSum24h);
+          DebugPrintf("rain  je: %.03d\n", rainSum60);
 
           if (oledHold) {
             display.clearDisplay();
@@ -520,28 +522,28 @@ if (oledHold) {
             display.setCursor(0, 30);
             display.printf("maxSp: %.0f Mh", maxSp);
             display.setCursor(0, 40);
-            display.printf("Rain: %.03d in", rainSum1h);
+            display.printf("Rain: %.03d in", rainSum60);
             display.setCursor(0, 50);
             display.printf("Batt: %.2f V", batv);
             display.display();
             oledActive = true;
           }
 
-          if (batv < 3.3f) {
+     if (batv < 3.3f) {
             VoltageCycle++;
             DebugPrintf("Nizke napeti: %.2f VoltageCycle = %d/3 \n", batv, VoltageCycle );
                    if (VoltageCycle >= 3) {
                    DebugPrintf("napeti not ok posle msg\n");
+                   DebugPrintf("Bat: %.2fV → VoltageCycle = %d/3\n", batv, VoltageCycle);
                    // Posle zpravu
-                   sendMsg(avgSp, avgDr, maxSp, batv, false, tF, pres, hum, rainSum1h, rainSum24h);
+                   sendMsg(avgSp, avgDr, maxSp, batv, tF, pres, hum, rainSum1h, rainSum24h);
                    VoltageCycle = 0;
                                           }
             }else{
               DebugPrintf("napeti ok posle msg\n");
             // Posle zpravu
-          sendMsg(avgSp, avgDr, maxSp, batv, false, tF, pres, hum, rainSum1h, rainSum24h);
+          sendMsg(avgSp, avgDr, maxSp, batv, tF, pres, hum, rainSum1h, rainSum24h);
                 }
-
 
           cyklus20s = 0;
           rainCount5min = 0;
@@ -570,7 +572,7 @@ if (rainSumCheck > 0 || rainCount5min > 0) {
   DebugPrintln("🌧️ Aktivní déšť – rychlý 1s režim měření");
 } else {
   // Jinak pomalý režim – jen jednou za 20 sekund
-  nextSleepInterval = 19500;   // 20 sekund 19500
+  nextSleepInterval = 19500;   // 20 sekund
   cyklus1s = 14;               // aby se 20s měření spouštělo každých 20 sekund
   DebugPrintln("☀️ Bez deště – zpomaluji měření na 20s interval");
 }
@@ -592,7 +594,7 @@ void loop() {}
  |  __/| |_| / /_| |\  |/ ___ \| |  | | . \   | |  
  |_|    \___/____|_| \_/_/   \_\_|  |_|_|\_\  |_|  
 
-   nektera dalsi verze bude vyuzivat externí pin (heartbeat) :)
+   dalsi verze bude vyuzivat externí pin (heartbeat) :)
   verze K vylepsen 24h uhrn srazek a predelano vysilani pri vybitych baterii
   verze J dodelan 24h uhrn srazek + kombinovyny DeepSleep 1s i 20s
   verze I pri off display pin 4 vypnese i serial
