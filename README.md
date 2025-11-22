@@ -24,8 +24,8 @@ Historická data lze sledovat online na:[www.aprs.fi](https://www.aprs.fi).
 
 🌧️ Měření srážek
 Srážky jsou detekovány nepřetržitě s přesností 0,3 mm na impuls.
-Data se každých 5 minut ukládají do kruhového bufferu o 12 pozicích, což umožňuje přehled o srážkovém úhrnu za poslední hodinu.
-Srážky se detekují nepřetržitě. Každých 5 minut (13 cyklus) se zaznamenávají do **12polohového kruhového bufferu**, čímž získáme přehled za poslední hodinu.
+Data se kprůběžně ukládají do kruhového bufferu o 12 a 288  pozicích, což umožňuje přehled o srážkovém úhrnu za poslední hodinu a den
+Srážky se detekují nepřetržitě data se ukládají průběžně. Každých 5 minut (13 cyklus) se provede součet **12 a 288 polohového kruhového bufferu**, čímž získáme přehled za poslední hodinua den.
 
 🔩 Použité senzory
 Senzory pro vítr a srážky jsou převzaty z běžně dostupných meteostanic WH1080 / WH1090, které lze snadno zakoupit jako náhradní díly za přijatelnou cenu.
@@ -40,8 +40,9 @@ Celý kód je bohatě okomentovaný a všechny výpočty jsou průběžně zobra
 ![Pohled na prototyp meteosondy MetFet 🙂](Obrazky/20250606_231952.jpg)
 
 Pohled na prototyp meteosondy MetFet 🙂.
+
 **Doporučení pro solární provoz:**  
-Vypni OLED úplně (jumper na GPIO4 odpoj nebo na GND) → průměrná spotřeba klesne o ~3 mA → rozdíl mezi „vybité za týden“ a „funguje celou zimu“.
+Vypni OLED úplně (jumper na GPIO4 propojen na GND)
 
 ![Montáž sondy do vodotěsné krabičky](Obrazky/20250604_143648.jpg)
 
@@ -53,11 +54,11 @@ Pohled na stranu plošného spoje.
 
 ## Spotřeba – naměřená na stole
 
-| Režim                     | OLED zapnutý | OLED vypnutý (GPIO4 = LOW) | Úspora   |
-|---------------------------|--------------|----------------------------|----------|
-| Deep-sleep                | 5,0 mA       | **1,9 mA**                 | –3,1 mA  |
-| Měření větru (3 s)        | 22 mA        | **19,5 mA**                | –2,5 mA  |
-| LoRa vysílání             | 89 mA        | **80 mA**                  | –9 mA    |
+| Režim                     | OLED zapnutý | OLED vypnutý (GPIO4 = LOW) |
+|---------------------------|--------------|----------------------------|
+| Deep-sleep                | 5,0 mA       | **1,9 mA**                 |
+| Měření větru (3 s)        | 22 mA        | **19,5 mA**                |
+| LoRa vysílání             | 89 mA        | **80 mA**                  |
 
 ![Ukázka montáže za využití 3D tištěných dílů](Obrazky/20250620_184324.jpg)
 
@@ -78,7 +79,8 @@ Upravené Moxon antény.
 ![Orientační kalibrace srážkoměru za pomocí zahradního kolečka 😅](Obrazky/20250605_061626.jpg)
 
 Orientační kalibrace srážkoměru za pomocí zahradního kolečka. 😅
-## Co přesně měří
+
+## Co a jak přesně měří
 
 | Velicina            | Rozlišení / přesnost               | Interval měření |
 |---------------------|------------------------------------|-----------------|
@@ -104,8 +106,8 @@ Průběh impulsu srážkoměru při změně za kondenzátor M1. Při 10pF občas
 ![Provozní zkoušky porovnávání nové sondy v přírodních podmínkách 💪😁](Obrazky/20250620_190045.jpg)
 
 Provozní zkoušky porovnávání nové sondy v přírodních podmínkách 💪😁
-## Použité komponenty
 
+## Použité hlavvní komponenty
 | Součástka                     | Kde koupit                                    | Cena cca |
 |-------------------------------|-----------------------------------------------|----------|
 | LILYGO T3 V1.6.1              | Laskakit, Aliexpress                          | 850 Kč   |
@@ -113,7 +115,7 @@ Provozní zkoušky porovnávání nové sondy v přírodních podmínkách 💪�
 | Anemometr + směrovka WH1080   | Hadex, Aliexpress („WH1080 wind sensor“)      | 350 Kč   |
 | Srážkoměr WH1080              | Hadex, Aliexpress („WH1080 rain gauge“)       | 350 Kč   |
 | Solární panel 10×10 cm        | Aliexpress                                    | 150 Kč   |
-| Li-Ion 18650/21700 s ochranou | kdekoliv                                      | 100 Kč   |
+| Li-Ion 18650                  | kdekoliv                                      | 100 Kč   |
 
 **Celkem: 1600–1800 Kč**
 
