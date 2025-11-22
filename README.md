@@ -23,9 +23,7 @@ Po 13 dvacetisekundových cyklech (tedy každých 5 minut) se provede měření 
 Historická data lze sledovat online na:[www.aprs.fi](https://www.aprs.fi).
 
 🌧️ Měření srážek
-Srážky jsou detekovány nepřetržitě s přesností 0,3 mm na impuls.
-Data se kprůběžně ukládají do kruhového bufferu o 12 a 288  pozicích, což umožňuje přehled o srážkovém úhrnu za poslední hodinu a den
-Srážky se detekují nepřetržitě data se ukládají průběžně. Každých 5 minut (13 cyklus) se provede součet **12 a 288 polohového kruhového bufferu**, čímž získáme přehled za poslední hodinua den.
+Srážky se detekují nepřetržitě s přesností 0,3 mm na impuls data se ukládají průběžně. Každých 5 minut (13 cyklus) se provede součet **12 a 288 polohového kruhového bufferu**, čímž získáme přehled za poslední hodinua den.
 
 🔩 Použité senzory
 Senzory pro vítr a srážky jsou převzaty z běžně dostupných meteostanic WH1080 / WH1090, které lze snadno zakoupit jako náhradní díly za přijatelnou cenu.
