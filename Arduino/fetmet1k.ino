@@ -47,11 +47,6 @@ bool oledActive = false;
 #define GREEN_LED         25      // integrovana led
 #define SRDCE             15    // pin pro pripojeni externiho resetu
 
-// --- TESTOVACÍ BLOK PRO RYCHLÉ LADĚNÍ ---
-#define TEST_CYKLUS20S 13
-#define TEST_INTERVAL_MS 500  // 0.5 s místo 20s
-// --- TESTOVACÍ BLOK PRO RYCHLÉ LADĚNÍ ---
-
 volatile int SpeedPulseCount = 0;
 
 RTC_DATA_ATTR int rainBuf1h[12] = {0};  // kruhovy buffer definici od nuly
@@ -124,6 +119,7 @@ String getAdcDir(int v) {
   if (v < 3900) return "090";
   return "000";
 }
+
 // Výpočet průměrného směru větru pomocí Yamartino algoritmu
 float avgDirYamartino(float* a, int n, float* stdDevOut = nullptr) {
   float sumSin = 0, sumCos = 0;
@@ -246,7 +242,7 @@ void sendMsg(float avgSp, float avgDr, float maxSp, float batv,
   snprintf(rainStr,  sizeof(rainStr),  "r%03d", rain1h);
   snprintf(rain24Str,sizeof(rain24Str),"p%03d", rain24h);
 
-  // Vždy plná zpráva – čistá, přehledná, bez podmínek
+  // Naformatovani LoRa MSG
   snprintf(msg, sizeof(msg),
            "%s%s/%sg%s%s%s%s%s%s%s",
            station, dirStr, spStr, gustStr,
@@ -256,7 +252,7 @@ void sendMsg(float avgSp, float avgDr, float maxSp, float batv,
   DebugPrintln(msg);
 
   LoRa.beginPacket();
-  LoRa.write('<');
+  LoRa.write('<'); // tohle jsem hledam na Googlu nekolik hodin
   LoRa.write(0xFF);
   LoRa.write(0x01);
   LoRa.print(msg);
@@ -270,8 +266,7 @@ void setup() {
 //=======================================================================================
   setCpuFrequencyMhz(40);
   // =================================================
-  // FIX nízké spotřeby pro RAIN_PIN = 13 (nebo 12, 15)
-  // =================================================
+  // FIX nízké spotřeby pro RAIN_PIN = 13
   gpio_deep_sleep_hold_dis();                    // globálně vypne hold všech pinů
   rtc_gpio_pullup_dis((gpio_num_t)RAIN_PIN);     // vypne interní pull-up v deep-sleepu
   gpio_hold_dis((gpio_num_t)RAIN_PIN);           // pojistka pro strapping pin
@@ -415,15 +410,13 @@ if (oledHold) {
         display.ssd1306_command(SSD1306_DISPLAYOFF);
         oledActive = false;
       }
-// každých 18s + 3s základní meteorologické měření = 20s
+// každých 20 s (18s + 3s)  základní meteorologické měření vetru (3 s) rychlosti + 5 vzorků směru
         if (cyklus1s % 15 == 0) {
         cyklus1s   = 0;
         cyklus20s++;
         DebugPrintf("📡 Doslo k preruseni od casovace 20s je %d/13 cyklus.📡\n", cyklus20s);
-        DebugPrintln("😁 Provedese 3 sekundove mereni vetru!");
-        attachInterrupt(digitalPinToInterrupt(RAIN_PIN), rainInterrupt, RISING);// kdyby prisla srazka v prubehu mereni z 1->0 50ms
-// --- Měření větru (3 s) + 5 vzorků směru ---
-
+        DebugPrintln("😁 Provedese 3 sekundove mereni smeru  a rychlosti vetru!");
+        attachInterrupt(digitalPinToInterrupt(RAIN_PIN), rainInterrupt, RISING);// kdyby prisla srazka v prubehu mereni vetru
         digitalWrite(SRDCE,HIGH);// reset externiho wathdog
         SpeedPulseCount = 0;
         float dir5x[5] = {0};
@@ -494,7 +487,7 @@ if (oledHold) {
           float tF = tC * 1.8f + 32.0f;//prepocet °C na °F
           float pres = (bme.readPressure())/pow((1-ELEVATION/44330.0), 5.255)/10;// prepocet tlaku na hladinu more
           float hum = bme.readHumidity();
-          int rainSum60 = rain();
+          int rainSum1h = rain();
 
           DebugPrintf("avgSp je: %.0f\n", avgSp);
           DebugPrintf("maxSp je: %.0f\n", maxSp);
@@ -503,7 +496,7 @@ if (oledHold) {
           DebugPrintf("TeplC je: %.0f\n", tC);
           DebugPrintf("pres  je: %.0f\n", pres);
           DebugPrintf("hum   je: %.0f\n", hum);
-          DebugPrintf("rain  je: %.03d\n", rainSum60);
+          DebugPrintf("rain  je: %.03d\n", rainSum1h0);
 
           if (oledHold) {
             display.clearDisplay();
@@ -522,7 +515,7 @@ if (oledHold) {
             display.setCursor(0, 30);
             display.printf("maxSp: %.0f Mh", maxSp);
             display.setCursor(0, 40);
-            display.printf("Rain: %.03d in", rainSum60);
+            display.printf("Rain: %.03d in", rainSum1h);
             display.setCursor(0, 50);
             display.printf("Batt: %.2f V", batv);
             display.display();
@@ -531,10 +524,8 @@ if (oledHold) {
 
      if (batv < 3.3f) {
             VoltageCycle++;
-            DebugPrintf("Nizke napeti: %.2f VoltageCycle = %d/3 \n", batv, VoltageCycle );
-                   if (VoltageCycle >= 3) {
-                   DebugPrintf("napeti not ok posle msg\n");
-                   DebugPrintf("Bat: %.2fV → VoltageCycle = %d/3\n", batv, VoltageCycle);
+            if (VoltageCycle >= 3) {
+                   DebugPrintf("Nizke napeti bat: %.2fV → MSG se odesle az VoltageCycle = %d bude =3\n", batv, VoltageCycle);
                    // Posle zpravu
                    sendMsg(avgSp, avgDr, maxSp, batv, tF, pres, hum, rainSum1h, rainSum24h);
                    VoltageCycle = 0;
