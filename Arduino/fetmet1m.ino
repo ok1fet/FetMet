@@ -7,7 +7,7 @@
  
 *//////////////////////////////////////////////////////////////////////////////////////////////
 
-const char* station = "OK1FET-6>APRS:!5004.91N/01431.53E_";
+const char* station = "OK1FET-73>APRS:!5006.91N/01436.53E_";
 #define VREF              3.6527f   //nové VREF = 3.657 × (napeti 4.17 hw / napeti 4.34 mp ) ≈ 3.657 × 0.960 ≈ 3.513
 #define ELEVATION         225       // výška sondy v metrech nad mořem 
 const char* rstv = "000/000g000r000_RESETm";
@@ -75,13 +75,13 @@ RTC_DATA_ATTR bool wasResetMsgSent = false;
 RTC_DATA_ATTR unsigned long nextSleepInterval = 19500;
 
 // ==================== WIFI & MQTT ====================
-const char* ssid        = "BehalWiFi";
-const char* password    = "a1a1a1a1a1";
+const char* ssid        = "wifissid";
+const char* password    = "psw";
 const char* mqtt_server = "10.0.0.230";
 const int   mqtt_port   = 1883;
 const char* mqtt_user   = "mqtt";
-const char* mqtt_pass   = "b2b2b2b2b2";
-const char* mqtt_topic  = "weather/ok1fet-6";
+const char* mqtt_pass   = "psw";
+const char* mqtt_topic  = "weather/lora";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
