@@ -7,7 +7,7 @@ kdyz neni obrazek 800x600
 
 # FetMet APRS amatérská LoRa meteostanice
 
-🟥**Pozor změna používaní pinu 12 který branil programovaní ESP v PCB OPRAVENO**🟥
+🟥**Nová verze poporuje posílání dat přes protokol MQTT**🟥
 
 
 Meteostanice je postavena na vývojové desce ESP32 LILYGO T3 v1.6.1, která obsahuje integrovaný LoRa modul (433 MHz) a OLED displej. Díky tomu je celá konstrukce sondy výrazně zjednodušená.
@@ -15,15 +15,15 @@ Meteostanice je postavena na vývojové desce ESP32 LILYGO T3 v1.6.1, která obs
 Pro měření směru a rychlosti větru, srážek, atmosférického tlaku, teploty a vlhkosti stačí pouze tři elektronické součástky:
 2× kondenzátor, 1× odpor a senzorový modul BME280.
 
-Rychlost větru je měřena každých 20 sekund během intervalu 3 sekund.
+Rychlost větru je měřena každých 20 sekund během intervalu 5 sekund.
 Směr větru se vypočítává pomocí Yamartinova algoritmu, který vektorově zpracuje data a provádí korekci směrové odchylky.
 
-Po 13 dvacetisekundových cyklech (tedy každých 5 minut) se provede měření tlaku, teploty a vlhkosti. Výsledná data jsou odesílána prostřednictvím sítě LoRa APRS.
+Po 24 dvacetisekundových cyklech (tedy každých 10 minut) se provede měření tlaku, teploty a vlhkosti. Výsledná data jsou odesílána prostřednictvím sítě LoRa APRS.
 
 Historická data lze sledovat online na:[www.aprs.fi](https://www.aprs.fi).
 
 🌧️ Měření srážek
-Srážky se detekují nepřetržitě s přesností 0,3 mm na impuls data se ukládají průběžně. Každých 5 minut (13 cyklus) se provede součet **12 a 288 polohového kruhového bufferu**, čímž získáme přehled za poslední hodinua den.
+Srážky se detekují nepřetržitě s přesností 0,3 mm na impuls data se ukládají průběžně. Každých 10 minut (6 cyklus) se provede součet **6 a 144 polohového kruhového bufferu**, čímž získáme přehled za poslední hodinua den.
 
 🔩 Použité senzory
 Senzory pro vítr a srážky jsou převzaty z běžně dostupných meteostanic WH1080 / WH1090, které lze snadno zakoupit jako náhradní díly za přijatelnou cenu.
