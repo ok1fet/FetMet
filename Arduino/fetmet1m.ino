@@ -3,12 +3,13 @@
   |  ___| ____|_   _|   |  \/  | ____|_   _|
   | |_  |  _|   | |_____| |\/| |  _|   | |  
   |  _| | |___  | |_____| |  | | |___  | |  
-  |_|   |_____| |_|     |_|  |_|_____| |_|  Metostanice LoRa verze M
-*/
-/////////////////////////////////////////////////////////////////////////////////////////////
-const char* station = "OK1FET-73>APRS:!5006.91N/01436.53E_";
-#define VREF              3.6527f
-#define ELEVATION 225
+  |_|   |_____| |_|     |_|  |_|_____| |_|    Metostanice LoRa + MQTT v.M
+ 
+*//////////////////////////////////////////////////////////////////////////////////////////////
+
+const char* station = "OK1FET-6>APRS:!5004.91N/01431.53E_";
+#define VREF              3.6527f   //nové VREF = 3.657 × (napeti 4.17 hw / napeti 4.34 mp ) ≈ 3.657 × 0.960 ≈ 3.513
+#define ELEVATION         225       // výška sondy v metrech nad mořem 
 const char* rstv = "000/000g000r000_RESETm";
 
 #include <SPI.h>
@@ -19,8 +20,10 @@ const char* rstv = "000/000g000r000_RESETm";
 #include <Adafruit_SSD1306.h>
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
 
-// --- Debug výpisy podle OLED_ON_PIN ---
+// Debug jen když je OLED jumper otevřený (pin HIGH)
 #define DebugPrint(x)      do { if (digitalRead(OLED_ON_PIN)==HIGH) Serial.print(x); } while(0)
 #define DebugPrintln(x)    do { if (digitalRead(OLED_ON_PIN)==HIGH) Serial.println(x); } while(0)
 #define DebugPrintf(...)   do { if (digitalRead(OLED_ON_PIN)==HIGH) Serial.printf(__VA_ARGS__); } while(0)
@@ -29,65 +32,65 @@ const char* rstv = "000/000g000r000_RESETm";
 #define SCREEN_HEIGHT 64
 #define OLED_RESET    -1
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-bool oledActive = false;
 
 // ==================== PINY ====================
-#define LORA_SCK      5
-#define LORA_MISO     19
-#define LORA_MOSI     27
-#define LORA_SS       18
-#define LORA_RST      23
-#define LORA_DIO0     26
+#define LORA_SCK          5
+#define LORA_MISO         19
+#define LORA_MOSI         27
+#define LORA_SS           18
+#define LORA_RST          23
+#define LORA_DIO0         26
 #define BATTERY_PIN       35
-#define OLED_ON_PIN        4
+#define OLED_ON_PIN       4   //OLED ovládání podle jumperu na pinu
 #define WIND_SPEED_PIN    14
 #define WIND_DIR_PIN      34
 #define RAIN_PIN          13
-#define GREEN_LED         25
+#define GREEN_LED         25    // integrovana na LiLYGO
 #define SRDCE             15
-#define RAIN_CALIB 1.923f
+
+// Kalibrace srážek (do APRS setin palce)
+#define RAIN_CALIB        1.323f //original hodnota 1.923f
+
+// Převody
+#define MPH_TO_MS         0.44704f
+#define MS_TO_MPH         2.23694f
 
 volatile int SpeedPulseCount = 0;
 
 // ==================== RTC DATA ====================
-RTC_DATA_ATTR int rainBuf1h[6] = {0};
-RTC_DATA_ATTR int rainBuf1hPoradi = 0;
-RTC_DATA_ATTR int rainCount10min = 0;
-RTC_DATA_ATTR int rainSum1h = 0;
+RTC_DATA_ATTR int  rainBuf1h[6] = {0};
+RTC_DATA_ATTR int  rainBuf1hPoradi = 0;
+RTC_DATA_ATTR int  rainCount10min = 0;
+RTC_DATA_ATTR int  rainSum1h = 0;
 RTC_DATA_ATTR long rainBuf24h[144] = {0};
-RTC_DATA_ATTR int rainBuf24hPoradi = 0;
+RTC_DATA_ATTR int  rainBuf24hPoradi = 0;
 RTC_DATA_ATTR long rainSum24h = 0;
-RTC_DATA_ATTR int cyklus20s = 0;
-RTC_DATA_ATTR int cyklus1s = 0;
-RTC_DATA_ATTR float rtc_windSpeedBuf[24];
-RTC_DATA_ATTR float rtc_windDirBuf[24];
-RTC_DATA_ATTR float rtc_maxWindBuf = 0;
-RTC_DATA_ATTR float rtc_minWindBuf = 99.9f;
-RTC_DATA_ATTR int VoltageCycle = 0;
+RTC_DATA_ATTR int  cyklus20s = 0;
+RTC_DATA_ATTR float rtc_windSpeedBuf[24];   // mph
+RTC_DATA_ATTR float rtc_windDirBuf[24];     // deg
+RTC_DATA_ATTR float rtc_maxWindBuf = 0;     // mph
+RTC_DATA_ATTR float rtc_minWindBuf = 99.9f; // mph
+RTC_DATA_ATTR int  VoltageCycle = 0;
 RTC_DATA_ATTR bool wasResetMsgSent = false;
 RTC_DATA_ATTR unsigned long nextSleepInterval = 19500;
 
 // ==================== WIFI & MQTT ====================
-#include <WiFi.h>
-#include <PubSubClient.h>
-const char* ssid = "TVOJEWiFI";
-const char* password = "HESLO";
+const char* ssid        = "BehalWiFi";
+const char* password    = "a1a1a1a1a1";
 const char* mqtt_server = "10.0.0.230";
-const int   mqtt_port = 1883;
-const char* mqtt_user = "UZIVATEL";
-const char* mqtt_pass = "HESLO";
+const int   mqtt_port   = 1883;
+const char* mqtt_user   = "mqtt";
+const char* mqtt_pass   = "b2b2b2b2b2";
+const char* mqtt_topic  = "weather/ok1fet-6";
+
 WiFiClient espClient;
 PubSubClient client(espClient);
-String mqtt_topic = "weather/ok1fet-73";
 
-// ==================== OBJEKTY ====================
+// ==================== OBJEKTY / STAV ====================
 Adafruit_BME280 bme;
 unsigned long lastPulseTime = 0;
 unsigned long lastRainPulseTime = 0;
-float wSpeed = 0.0;
-float wDir = 0.0;
-float batv;
-bool LowBatt = true;
+float batv = 0;
 
 // ==================== INTERRUPTS ====================
 void IRAM_ATTR onWindPulse() {
@@ -106,21 +109,25 @@ void IRAM_ATTR rainInterrupt() {
   }
 }
 
-// ==================== FUNKCE ====================
-float avgSpeed(float *a, int n, float *maxSP) {
+// ==================== POMOCNÉ FUNKCE ====================
+float avgSpeedMph(float *a, int n, float *maxOut) {
+  if (n <= 0) {
+    if (maxOut) *maxOut = 0;
+    return 0;
+  }
   float s = 0;
-  float maxHodnota = a[0];
-  DebugPrint("avgSpeed vstupni pole: ");
+  float mx = a[0];
+  DebugPrint("avgSpeed vstupni pole (mph): ");
   for (int i = 0; i < n; i++) {
     DebugPrintf("%.2f ", a[i]);
     s += a[i];
-    if (a[i] > maxHodnota) maxHodnota = a[i];
+    if (a[i] > mx) mx = a[i];
   }
   DebugPrintln("");
-  float prumer = s / n;
-  DebugPrintf("Speed průměr: %.2f | Speed max: %.2f\n", prumer, maxHodnota);
-  *maxSP = maxHodnota;
-  return prumer;
+  float avg = s / n;
+  DebugPrintf("Speed průměr: %.2f mph | max: %.2f mph\n", avg, mx);
+  if (maxOut) *maxOut = mx;
+  return avg;
 }
 
 String getAdcDir(int v) {
@@ -136,45 +143,56 @@ String getAdcDir(int v) {
 }
 
 float avgDirYamartino(float* a, int n, float* stdDevOut = nullptr) {
+  if (n <= 0) {
+    if (stdDevOut) *stdDevOut = 0;
+    return 0;
+  }
+
   float sumSin = 0, sumCos = 0;
   for (int i = 0; i < n; i++) {
     float rad = radians(a[i]);
     sumSin += sin(rad);
     sumCos += cos(rad);
   }
+
   float avgSin = sumSin / n;
   float avgCos = sumCos / n;
-  float avgDirRad = atan2(avgSin, avgCos);
-  float avgDirDeg = degrees(avgDirRad);
-  if (avgDirDeg < 0) avgDirDeg += 360;
+  float avgDirDeg = degrees(atan2(avgSin, avgCos));
+  if (avgDirDeg < 0) avgDirDeg += 360.0f;
 
-  float epsilon = sqrt(1.0 - (avgSin * avgSin + avgCos * avgCos));
-  float stdDev = degrees(asin(epsilon));
+  float r2 = avgSin * avgSin + avgCos * avgCos;
+  if (r2 > 1.0f) r2 = 1.0f;
+  float eps = sqrtf(1.0f - r2);
+  if (eps > 1.0f) eps = 1.0f;
+  float stdDev = degrees(asinf(eps));
   if (stdDevOut) *stdDevOut = stdDev;
-
   return avgDirDeg;
 }
 
 float readBat() {
   int r = analogRead(BATTERY_PIN);
   batv = (r / 4095.0f * VREF) / 0.5f;
-  if (batv < 3.3f) LowBatt = true;
   return batv;
 }
 
-float rain() {
+// vrací 1h úhrn v APRS jednotkách (setiny palce)
+int rainUpdateAndGet1h() {
   DebugPrintf("10min slot %d/6 = %d pulzů\n", rainBuf1hPoradi, rainCount10min);
-  rainBuf1hPoradi = (rainBuf1hPoradi + 1) % 6;
+
+  rainBuf1hPoradi  = (rainBuf1hPoradi + 1) % 6;
   rainBuf24hPoradi = (rainBuf24hPoradi + 1) % 144;
-  rainBuf1h[rainBuf1hPoradi] = (rainCount10min * RAIN_CALIB + 0.5f);
-  rainBuf24h[rainBuf24hPoradi] = (rainCount10min * RAIN_CALIB + 0.5f);
+
+  int tips = (int)(rainCount10min * RAIN_CALIB + 0.5f);
+  rainBuf1h[rainBuf1hPoradi] = tips;
+  rainBuf24h[rainBuf24hPoradi] = tips;
 
   rainSum1h = 0;
   for (int i = 0; i < 6; i++) rainSum1h += rainBuf1h[i];
+
   rainSum24h = 0;
   for (int i = 0; i < 144; i++) rainSum24h += rainBuf24h[i];
 
-  DebugPrintf("1h: %d | 24h: %d\n", rainSum1h, rainSum24h);
+  DebugPrintf("1h: %d | 24h: %d (APRS setiny in)\n", rainSum1h, (int)rainSum24h);
   rainCount10min = 0;
   return rainSum1h;
 }
@@ -185,7 +203,7 @@ void setupLoRa() {
   LoRa.setTxPower(17);
   if (!LoRa.begin(433775000)) {
     DebugPrintln("LoRa init selhalo!");
-    while (1);
+    while (1) delay(1000);
   }
   LoRa.setSpreadingFactor(12);
   LoRa.setSignalBandwidth(125E3);
@@ -194,34 +212,44 @@ void setupLoRa() {
   DebugPrintln("LoRa init OK");
 }
 
-void sendMsg(float avgSp, float avgDr, float maxSp, float minSp_mph, float batv,
-             float tF, float pres, float hum, int rain1h, int rain24h) {
-  if (digitalRead(OLED_ON_PIN) == HIGH) digitalWrite(GREEN_LED, HIGH);
+// ====================== LORA TX ======================
+// avgSp/maxSp/minSp_mph = mph
+// _M je v m/s, _D ve stupních
+void sendMsg(float avgSp_mph, float avgDr, float maxSp_mph, float minSp_mph,
+             float batv, float tF, float pres_aprs, float hum,
+             int rain1h_aprs, int rain24h_aprs, float dirStd) {
 
-  int sp_mph   = round(avgSp * 0.621371f);
-  int gust_mph = round(maxSp * 0.621371f);
-  float min_ms = minSp_mph * 0.44704f;
+  int sp_mph   = constrain((int)round(avgSp_mph), 0, 999);
+  int gust_mph = constrain((int)round(maxSp_mph), 0, 999);
+  float min_ms = minSp_mph * MPH_TO_MS;
 
-  char msg[160];
-  char dirStr[4], spStr[4], gustStr[4], batStr[12];
+  char msg[180];
+  char dirStr[4], spStr[4], gustStr[4];
   char tempStr[6], humStr[4], presStr[8], rainStr[5], rain24Str[5];
-  char minStr[10];
+  char batStr[12], minStr[12], dirStdStr[12];
 
   snprintf(dirStr,    sizeof(dirStr),    "%03d", (int)avgDr);
   snprintf(spStr,     sizeof(spStr),     "%03d", sp_mph);
   snprintf(gustStr,   sizeof(gustStr),   "%03d", gust_mph);
   snprintf(tempStr,   sizeof(tempStr),   "t%03d", (int)tF);
-  snprintf(humStr,    sizeof(humStr),    "h%02d", (int)hum >= 100 ? 0 : (int)hum);
-  snprintf(presStr,   sizeof(presStr),   "b%05d", (int)pres);
-  snprintf(rainStr,   sizeof(rainStr),   "r%03d", rain1h);
-  snprintf(rain24Str, sizeof(rain24Str), "p%03d", rain24h);
+  snprintf(humStr,    sizeof(humStr),    "h%02d", ((int)hum >= 100) ? 0 : (int)hum);
+  snprintf(presStr,   sizeof(presStr),   "b%05d", (int)pres_aprs);
+  snprintf(rainStr,   sizeof(rainStr),   "r%03d", rain1h_aprs);
+  snprintf(rain24Str, sizeof(rain24Str), "p%03d", rain24h_aprs);
   snprintf(batStr,    sizeof(batStr),    "_B%.2f", batv);
   snprintf(minStr,    sizeof(minStr),    "_M%.1f", min_ms);
 
+  int d = (int)round(dirStd);
+  if (d < 0) d = 0;
+  if (d > 180) d = 180;
+  snprintf(dirStdStr, sizeof(dirStdStr), "_D%d", d);
+
   snprintf(msg, sizeof(msg),
-           "%s%s/%sg%s%s%s%s%s%s%s%s",
-           station, dirStr, spStr, gustStr, tempStr, humStr, presStr,
-           rainStr, rain24Str, batStr, minStr);
+           "%s%s/%sg%s%s%s%s%s%s%s%s%s",
+           station, dirStr, spStr, gustStr,
+           tempStr, humStr, presStr,
+           rainStr, rain24Str,
+           batStr, minStr, dirStdStr);
 
   DebugPrint("LoRa TX: ");
   DebugPrintln(msg);
@@ -240,81 +268,98 @@ void sendMsg(float avgSp, float avgDr, float maxSp, float minSp_mph, float batv,
 
 // ====================== WIFI ======================
 bool connectWiFi() {
+  setCpuFrequencyMhz(80);
+
   DebugPrintln("Připojuji WiFi...");
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(ssid, password);
 
   unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 8000) {  // max 8 sekund
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 8000) {
     delay(200);
     DebugPrint(".");
+    yield();
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    DebugPrintln("\nWiFi připojeno!");
+    DebugPrintln("\nWiFi OK");
     DebugPrintf("IP: %s\n", WiFi.localIP().toString().c_str());
     return true;
-  } else {
-    DebugPrintln("\nWiFi se nepodařilo připojit (timeout)");
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
-    return false;
   }
+
+  DebugPrintln("\nWiFi timeout");
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  setCpuFrequencyMhz(40);
+  return false;
 }
 
 // ====================== MQTT ======================
-bool reconnectMQTT() {
-  if (!client.connected()) {
-    DebugPrint("Připojuji MQTT...");
-    String clientId = "ESP32-Weather-" + String(random(0xffff), HEX);
-    
-    // Krátký timeout – nebudeme viset
-    if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
-      DebugPrintln("OK");
-      return true;
-    } else {
-      DebugPrintf("selhalo, rc=%d\n", client.state());
-      return false;
-    }
-  }
-  return true;
-}
-
-// ====================== ODESLÁNÍ DO HA ======================
+// pressure_hPa = skutečný tlak v hPa (ne APRS *10)
 void sendMQTT(float avgSp_mph, float avgDr, float maxSp_mph, float minSp_mph,
-              float batv, float tC, float pres_hPa, float hum) {
-  
-  // Nejdřív zkusíme WiFi
+              float batv, float tC, float pressure_hPa, float hum,
+              int rain1h_aprs, int rain24h_aprs, float dirStd) {
+
   if (!connectWiFi()) {
     DebugPrintln("MQTT přeskočeno – není WiFi");
-    return;   // ← důležité: nepokračujeme dál
-  }
-
-  if (!reconnectMQTT()) {
-    DebugPrintln("MQTT se nepodařilo připojit");
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
     return;
   }
 
-  float avgSp_ms = avgSp_mph * 0.44704f;
-  float maxSp_ms = maxSp_mph * 0.44704f;
-  float minSp_ms = minSp_mph * 0.44704f;
+  client.setServer(mqtt_server, mqtt_port);
+  client.setSocketTimeout(4);
 
-  char payload[320];
+  String clientId = "FETMET-" + String(random(0xffff), HEX);
+  if (!client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+    DebugPrintf("MQTT connect fail, rc=%d\n", client.state());
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    setCpuFrequencyMhz(40);
+    return;
+  }
+
+  DebugPrintln("MQTT připojeno");
+
+  float avg_ms = avgSp_mph * MPH_TO_MS;
+  float max_ms = maxSp_mph * MPH_TO_MS;
+  float min_ms = minSp_mph * MPH_TO_MS;
+
+  // APRS setiny palce -> mm
+  float rain1h_mm  = rain1h_aprs  * 0.254f;
+  float rain24h_mm = rain24h_aprs * 0.254f;
+
+  char payload[420];
   snprintf(payload, sizeof(payload),
-    "{\"temperature\":%.1f,\"humidity\":%.1f,\"pressure\":%.1f,"
-    "\"wind_speed\":%.1f,\"wind_gust\":%.1f,\"wind_min\":%.1f,"
-    "\"wind_dir\":%.0f,\"battery\":%.2f,\"rssi\":%d}",
-    tC, hum, pres_hPa, avgSp_ms, maxSp_ms, minSp_ms, avgDr, batv, WiFi.RSSI());
+    "{"
+    "\"temperature\":%.1f,"
+    "\"humidity\":%.1f,"
+    "\"pressure\":%.1f,"
+    "\"wind_speed\":%.1f,"
+    "\"wind_gust\":%.1f,"
+    "\"wind_min\":%.1f,"
+    "\"wind_dir\":%.0f,"
+    "\"wind_dir_std\":%.0f,"
+    "\"rain_1h\":%.1f,"
+    "\"rain_24h\":%.1f,"
+    "\"battery\":%.2f,"
+    "\"rssi\":%d"
+    "}",
+    tC, hum, pressure_hPa,
+    avg_ms, max_ms, min_ms,
+    avgDr, dirStd,
+    rain1h_mm, rain24h_mm,
+    batv, WiFi.RSSI()
+  );
 
-  bool success = client.publish(mqtt_topic.c_str(), payload, true);
-  DebugPrintf("MQTT %s: %s\n", success ? "OK" : "CHYBA", payload);
+  bool ok = client.publish(mqtt_topic, payload, true);
+  DebugPrintf("MQTT %s: %s\n", ok ? "OK" : "FAIL", payload);
 
-  // Po odeslání WiFi vypneme (šetříme energii)
   client.disconnect();
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
+  delay(100);
+  setCpuFrequencyMhz(40);
 }
 
 //=======================================================================================
@@ -322,13 +367,11 @@ void setup() {
 //=======================================================================================
   setCpuFrequencyMhz(40);
 
-  // FIX nízké spotřeby pro RAIN_PIN
   gpio_deep_sleep_hold_dis();
   rtc_gpio_pullup_dis((gpio_num_t)RAIN_PIN);
   gpio_hold_dis((gpio_num_t)RAIN_PIN);
 
   Serial.begin(115200);
-  client.setServer(mqtt_server, mqtt_port);
   delay(200);
 
   batv = readBat();
@@ -336,8 +379,10 @@ void setup() {
   pinMode(RAIN_PIN, INPUT_PULLUP);
   pinMode(WIND_SPEED_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(WIND_SPEED_PIN), onWindPulse, FALLING);
+
   pinMode(OLED_ON_PIN, INPUT_PULLUP);
   bool oledHold = (digitalRead(OLED_ON_PIN) == LOW);
+
   pinMode(GREEN_LED, OUTPUT);
   digitalWrite(GREEN_LED, LOW);
   pinMode(SRDCE, OUTPUT);
@@ -351,31 +396,26 @@ void setup() {
   esp_sleep_wakeup_cause_t reason = esp_sleep_get_wakeup_cause();
 
   switch (reason) {
-
     //----------------------------- POWER ON / RESET -----------------------------
     case ESP_SLEEP_WAKEUP_UNDEFINED: {
       if (!wasResetMsgSent) {
         DebugPrint("Prvni spusteni po resetu – posilam ");
         DebugPrintln(rstv);
 
-        if (oledHold) {
-          display.clearDisplay();
-          display.display();
-          display.ssd1306_command(SSD1306_DISPLAYOFF);
-          oledActive = false;
-        } else {
+        if (!oledHold) {
           display.ssd1306_command(SSD1306_DISPLAYON);
           display.clearDisplay();
           display.setCursor(0, 0);
           display.printf("!!!LORA TX!!!");
           display.setCursor(0, 10);
-          display.printf(station);
+          display.printf("%s", station);
           display.setCursor(0, 30);
-          display.printf(rstv);
+          display.printf("%s", rstv);
           display.setCursor(0, 50);
           display.printf("Batt: %.2f V", batv);
           display.display();
-          oledActive = true;
+        } else {
+          display.ssd1306_command(SSD1306_DISPLAYOFF);
         }
 
         digitalWrite(GREEN_LED, HIGH);
@@ -392,9 +432,7 @@ void setup() {
 
         wasResetMsgSent = true;
 
-        // Reset všech bufferů
         rainCount10min = 0;
-        cyklus1s = 0;
         cyklus20s = 0;
         rainSum1h = 0;
         rainBuf1hPoradi = 0;
@@ -416,13 +454,12 @@ void setup() {
 
     //----------------------------- RAIN INTERRUPT -----------------------------
     case ESP_SLEEP_WAKEUP_EXT0: {
+      // 1 tip na EXT0 wakeup (bez attachInterrupt v této větvi)
       rainCount10min++;
-      DebugPrintf("RAIN INTERRUPT | rainCount10min = %d | cyklus20s = %d\n", 
+      DebugPrintf("RAIN INTERRUPT | rainCount10min=%d | cyklus20s=%d\n",
                   rainCount10min, cyklus20s);
 
-      // Při dešti jdeme spát jen na krátkou dobu (1s),
-      // aby se co nejdřív vrátil normální 20s rytmus
-      nextSleepInterval = 1000;
+      nextSleepInterval = 1000; // rychlý návrat do 20s rytmu
 
       if (!oledHold) {
         display.ssd1306_command(SSD1306_DISPLAYON);
@@ -439,24 +476,20 @@ void setup() {
     }
 
     //----------------------------- TIMER WAKEUP -----------------------------
-    //----------------------------- TIMER WAKEUP -----------------------------
     case ESP_SLEEP_WAKEUP_TIMER: {
       DebugPrintf("TIMER | cyklus20s=%d | rainCount=%d\n", cyklus20s, rainCount10min);
 
       if (oledHold) {
         display.ssd1306_command(SSD1306_DISPLAYOFF);
-        oledActive = false;
       }
 
-      // ===== KAŽDÝ TIMER = jedno 20s měření větru =====
       cyklus20s++;
-
       DebugPrintf("=== 20s MERENI VETRU | cyklus %d/24 ===\n", cyklus20s);
 
-      // Povolíme počítání deště i během měření větru
+      // během měření větru počítej i déšť
       attachInterrupt(digitalPinToInterrupt(RAIN_PIN), rainInterrupt, FALLING);
 
-      digitalWrite(SRDCE, HIGH);          // heartbeat pro externí watchdog
+      digitalWrite(SRDCE, HIGH);
       SpeedPulseCount = 0;
       float dir8x[8] = {0};
       int idx = 0;
@@ -472,16 +505,18 @@ void setup() {
       }
       digitalWrite(SRDCE, LOW);
 
-      float wSpeed = (SpeedPulseCount * 2.1f) / 5.0f;
-      rtc_maxWindBuf = max(rtc_maxWindBuf, wSpeed);
-      rtc_minWindBuf = min(rtc_minWindBuf, wSpeed);
+      // impulsy za 5 s -> mph (kalibrace 2.1)
+      float speed_mph = (SpeedPulseCount * 2.1f) / 5.0f;
 
-      float stdDev = 0.0;
-      float wDir = avgDirYamartino(dir8x, idx, &stdDev);
+      rtc_maxWindBuf = max(rtc_maxWindBuf, speed_mph);
+      rtc_minWindBuf = min(rtc_minWindBuf, speed_mph);
+
+      float stdDev = 0.0f;
+      float dir = avgDirYamartino(dir8x, idx, &stdDev);
 
       int writeIdx = (cyklus20s - 1) % 24;
-      rtc_windSpeedBuf[writeIdx] = wSpeed;
-      rtc_windDirBuf[writeIdx]   = wDir;
+      rtc_windSpeedBuf[writeIdx] = speed_mph;
+      rtc_windDirBuf[writeIdx]   = dir;
 
       if (!oledHold) {
         display.ssd1306_command(SSD1306_DISPLAYON);
@@ -491,46 +526,50 @@ void setup() {
         display.setCursor(0, 12);
         display.printf("Pulsy: %d", SpeedPulseCount);
         display.setCursor(0, 24);
-        display.printf("Rychl: %.1f m/s", wSpeed * 0.44704f);
+        display.printf("Rychl: %.1f m/s", speed_mph * MPH_TO_MS);
         display.setCursor(0, 36);
-        display.printf("Smer: %.0f", wDir);
+        display.printf("Smer: %.0f", dir);
         display.setCursor(0, 48);
         display.printf("Rain: %d", rainCount10min);
         display.display();
       }
 
-      DebugPrintf("Cyklus %d/24 | %.1f m/s | %.0f° | rain %d | bat %.2fV\n",
-                  cyklus20s, wSpeed * 0.44704f, wDir, rainCount10min, readBat());
+      DebugPrintf("Cyklus %d/24 | %.1f mph (%.1f m/s) | %.0f deg | rain %d | bat %.2fV\n",
+                  cyklus20s, speed_mph, speed_mph * MPH_TO_MS, dir, rainCount10min, readBat());
 
-      // ========== AGREGACE + ODESLÁNÍ PO 24 CYKLECH (≈10 min) ==========
+      // ========== AGREGACE + ODESLÁNÍ (≈10 min) ==========
       if (cyklus20s >= 24) {
         DebugPrintln("=== AGREGACE + ODESLANI DAT ===");
 
-        if (!bme.begin(0x76)) {
-          DebugPrintln("BME280 init selhalo!");
-        }
+        bool bmeOk = bme.begin(0x76);
+        if (!bmeOk) DebugPrintln("BME280 init selhalo!");
 
         float maxSp = rtc_maxWindBuf;
-        float minSp = 99.9f;
-        for (int i = 0; i < 24; i++) {
-          if (rtc_windSpeedBuf[i] > 0.01f && rtc_windSpeedBuf[i] < minSp) {
-            minSp = rtc_windSpeedBuf[i];
-          }
-        }
+        float minSp = rtc_minWindBuf;
         if (minSp > 90.0f) minSp = 0.0f;
 
-        float avgSp = avgSpeed(rtc_windSpeedBuf, 24, &maxSp);
-        float avgDr = avgDirYamartino(rtc_windDirBuf, 24);
+        float avgSp = avgSpeedMph(rtc_windSpeedBuf, 24, &maxSp);
 
-        float tC = bme.readTemperature();
-        float tF = tC * 1.8f + 32.0f;
-        float pressure_hPa = bme.readPressure() / 100.0f;
-        float pres = pressure_hPa / pow((1.0 - ELEVATION / 44330.0), 5.255) * 10;
-        float hum = bme.readHumidity();
-        int rainSum60 = rain();
+        float dirStd = 0.0f;
+        float avgDr  = avgDirYamartino(rtc_windDirBuf, 24, &dirStd);
 
-        DebugPrintf("avgSp=%.1f max=%.1f min=%.1f dir=%.0f\n", avgSp, maxSp, minSp, avgDr);
-        DebugPrintf("tC=%.1f hum=%.0f pres=%.0f rain1h=%d\n", tC, hum, pres, rainSum60);
+        float tC = 0, tF = 0, pressure_hPa = 0, pres_aprs = 0, hum = 0;
+        if (bmeOk) {
+          tC = bme.readTemperature();
+          tF = tC * 1.8f + 32.0f;
+          float p_station = bme.readPressure() / 100.0f; // hPa
+          pressure_hPa = p_station / pow((1.0 - ELEVATION / 44330.0), 5.255); // moře hPa
+          pres_aprs = pressure_hPa * 10.0f; // APRS desetiny hPa
+          hum = bme.readHumidity();
+        }
+
+        int rain1h = rainUpdateAndGet1h();
+        int rain24 = (int)rainSum24h;
+
+        DebugPrintf("avg=%.1f max=%.1f min=%.1f mph | dir=%.0f std=%.0f\n",
+                    avgSp, maxSp, minSp, avgDr, dirStd);
+        DebugPrintf("tC=%.1f hum=%.0f p=%.1f hPa rain1h=%d rain24h=%d\n",
+                    tC, hum, pressure_hPa, rain1h, rain24);
 
         if (!oledHold) {
           display.ssd1306_command(SSD1306_DISPLAYON);
@@ -538,32 +577,33 @@ void setup() {
           display.setCursor(0, 0);
           display.printf("!!! LORA TX !!!");
           display.setCursor(0, 14);
-          display.printf("Dir: %.0f", avgDr);
+          display.printf("Dir:%.0f D:%.0f", avgDr, dirStd);
           display.setCursor(0, 28);
-          display.printf("Sp: %.1f m/s", avgSp * 0.44704f);
+          display.printf("Sp: %.1f m/s", avgSp * MPH_TO_MS);
           display.setCursor(0, 42);
-          display.printf("Rain: %d", rainSum60);
+          display.printf("Rain: %d", rain1h);
           display.setCursor(0, 54);
           display.printf("Bat: %.2fV", batv);
           display.display();
         }
 
+        bool doTx = true;
         if (batv < 3.3f) {
           VoltageCycle++;
-          if (VoltageCycle >= 3) {
-            
-            sendMsg(avgSp, avgDr, maxSp, minSp, batv, tF, pres, hum, rainSum60, rainSum24h);
-           /// sendMQTT(avgSp, avgDr, maxSp, minSp, batv, tC, pres, hum);
-          }
+          doTx = (VoltageCycle >= 3); // při nízké baterii řidčeji
         } else {
           VoltageCycle = 0;
-          sendMsg(avgSp, avgDr, maxSp, minSp, batv, tF, pres, hum, rainSum60, rainSum24h);
-          ///sendMQTT(avgSp, avgDr, maxSp, minSp, batv, tC, pres, hum);
         }
 
-        // Reset po odeslání
+        if (doTx) {
+          sendMsg(avgSp, avgDr, maxSp, minSp, batv, tF, pres_aprs, hum,
+                  rain1h, rain24, dirStd);
+          sendMQTT(avgSp, avgDr, maxSp, minSp, batv, tC, pressure_hPa, hum,
+                   rain1h, rain24, dirStd);
+        }
+
+        // reset 10min agregace
         cyklus20s = 0;
-        rainCount10min = 0;
         rtc_maxWindBuf = 0;
         rtc_minWindBuf = 99.9f;
         for (int i = 0; i < 24; i++) {
@@ -573,8 +613,6 @@ void setup() {
       }
 
       detachInterrupt(digitalPinToInterrupt(RAIN_PIN));
-
-      // Po normálním měření vždy dlouhý sleep
       nextSleepInterval = 19500;
       break;
     }
@@ -584,8 +622,8 @@ void setup() {
       break;
   }
 
-  // ==================== NASTAVENÍ SLEEP ====================
-  esp_sleep_enable_ext0_wakeup((gpio_num_t)RAIN_PIN, 0);   // LOW = aktivní
+  // ==================== SLEEP ====================
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)RAIN_PIN, 0);
   esp_sleep_enable_timer_wakeup(nextSleepInterval * 1000ULL);
 
   DebugPrintf("Jdu spat na %lu ms | rainCount=%d | cyklus20s=%d\n",
